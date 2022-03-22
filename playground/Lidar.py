@@ -7,7 +7,7 @@ from skimage.draw import line_aa
 from playground.utils.transform import to_screen_coords, make_direction, transform_points
 
 
-class Sensor:
+class Lidar:
     def __init__(self, dist_range, fov, mu, sigma):
         self.__dist_range = dist_range
         self.__fov = fov
@@ -16,8 +16,8 @@ class Sensor:
         self.__obstacles = None
 
         # generate scan arc coordinates
-        num_scan_points = 300
-        theta = np.linspace(0, 2 * np.pi, num_scan_points)
+        num_scan_points = 360
+        theta = np.array([0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi]) #np.linspace(0, 2 * np.pi, num_scan_points)
         x = np.cos(theta)
         y = np.sin(theta)
         self.__circle_coords = np.stack([x, y], axis=1)
@@ -32,20 +32,22 @@ class Sensor:
         start_pos = position
         direction = make_direction(rotation)
         for circle_dir in self.__circle_coords:
+            print(circle_dir)
             dot_product = np.dot(direction, circle_dir)
             scan_angle = math.acos(np.clip(dot_product, -1., 1))
             scan_angle = np.degrees(scan_angle)
-            if scan_angle <= self.__fov / 2:
-                end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
-                start_pos = start_pos.astype(int)
-                end_pos = end_pos.astype(int)
-                ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
-                for pos in zip(ys, xs):
-                    is_obstacle, obstacle_id = world.is_obstacle(pos)
-                    if is_obstacle:
-                        obstacles_coords.append(pos)
-                        obstacles_ids.append(obstacle_id)
-                        break
+            print(scan_angle)
+            # if scan_angle in [0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi]:
+            end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
+            start_pos = start_pos.astype(int)
+            end_pos = end_pos.astype(int)
+            ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+            for pos in zip(ys, xs):
+                is_obstacle, obstacle_id = world.is_obstacle(pos)
+                if is_obstacle:
+                    obstacles_coords.append(pos)
+                    obstacles_ids.append(obstacle_id)
+                    break
 
         if len(obstacles_coords) > 0:
             obstacles_coords = np.array(obstacles_coords)

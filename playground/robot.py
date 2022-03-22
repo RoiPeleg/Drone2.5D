@@ -4,22 +4,24 @@ from playground.utils.transform import to_screen_coords, make_direction
 
 
 class Robot(Body):
-    def __init__(self, odometry, sensor):
+    def __init__(self, odometry, sensors):
         super().__init__()
-        self.__radius = 25
+        self.__radius = 10
         self.__odomentry = odometry
-        self.__sensor = sensor
+        self.__sensors = sensors
 
     def rotate(self, angle, world):
         super().rotate(angle)
         self.__odomentry.track_rotate(angle)
-        self.__sensor.scan(self.position, self.rotation, world)
+        for sensor in self.__sensors:
+            sensor.scan(self.position, self.rotation, world)
 
     def move(self, dist, world):
         if world.allow_move(self.try_move(dist), self.size):
             super().move(dist)
             self.__odomentry.track_move(dist)
-            self.__sensor.scan(self.position, self.rotation, world)
+            for sensor in self.__sensors:
+                sensor.scan(self.position, self.rotation, world)
 
     @property
     def size(self):
@@ -33,4 +35,5 @@ class Robot(Body):
         dir_pos = self.position + direction * self.__radius * 2
         dir_pos = to_screen_coords(h, w, dir_pos)
         pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=2)
-        self.__sensor.draw(screen, h, w, self.position, direction)
+        for sensor in self.__sensors: 
+            sensor.draw(screen, h, w, self.position, direction)
