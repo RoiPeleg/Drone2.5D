@@ -11,6 +11,7 @@ from playground.odometry import Odometry
 from playground.Lidar import Lidar
 from playground.environment.world import World
 
+import time
 
 class SimulationMode(Enum):
     RAW_SENSORS = 1,
@@ -34,13 +35,18 @@ def main():
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
+    SAMPLE_PER_SECOND = 10
+    counter_in_second = 0
+
+    maximum_time_to_live = 8*60.0 #seconds
+    current_time_to_live = maximum_time_to_live
 
     # Initialize rendering
     screen = pygame.display.set_mode([world.width * 2, world.height])
     font = pygame.font.Font(pygame.font.get_default_font(), 24)
     sensors_text_surface = font.render('Sensors', True, (255, 0, 0))
     icp_text_surface = font.render('ICP', True, (255, 0, 0))
-    text_pos = (15, 15)
+    battery_text_surface = font.render(f'Battery: {current_time_to_live/maximum_time_to_live*100}%', True, (255, 0, 0))
 
     # Robot movement configuration
     rotation_step = 10  # degrees
@@ -49,12 +55,16 @@ def main():
     # make first initialization
     robot.move(0, world)
     for sensor in sensors:
+        counter_in_second = counter_in_second + 1
         sensors_view.take_measurements(odometry, sensor)
         slam_front_end.add_key_frame(sensor)
 
     # start simulation loop
     simulation_mode = SimulationMode.RAW_SENSORS
     running = True
+    start_time = time.time()
+    current_time_in_seconds = 0
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -83,24 +93,35 @@ def main():
                 if event.key == pygame.K_DOWN:
                     robot.move(-moving_step, world)
 
-            if time % 10 == 0:
-                for sensor in sensors:
-                    sensors_view.take_measurements(odometry, sensor)
-                    slam_front_end.add_key_frame(sensor)
+        if ((time.time() - start_time) % 10) > counter_in_second * 1/SAMPLE_PER_SECOND:
+            if counter_in_second > 9:
+                counter_in_second = 0
+            counter_in_second = counter_in_second + 1
+            # print(counter_in_second)
+            # print(((time.time() - start_time) % 10))
+            # print(counter_in_second * 1/SAMPLE_PER_SECOND)
+            for sensor in sensors:
+                sensors_view.take_measurements(odometry, sensor)
+                slam_front_end.add_key_frame(sensor)
+
+        if time.time() - start_time > current_time_in_seconds:
+            current_time_in_seconds = current_time_in_seconds + 1
+            current_time_to_live = current_time_to_live - 1
+            battery_text_surface = font.render(f'Battery: {current_time_to_live/maximum_time_to_live*100}%', True, (255, 0, 0))
 
         world.draw(screen)
         robot.draw(screen, world.height, world.width)
         if simulation_mode == SimulationMode.RAW_SENSORS:
             sensors_view.draw(screen, offset=world.width)
-            screen.blit(sensors_text_surface, dest=text_pos)
+            screen.blit(sensors_text_surface, dest=(15, 15))
         if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
             slam_front_end.draw(screen, offset=world.width)
-            screen.blit(icp_text_surface, dest=text_pos)
+            screen.blit(icp_text_surface, dest=(30, 15))
 
+        screen.blit(battery_text_surface, dest=(600, 15))
         pygame.display.flip()
 
     pygame.quit()
-
 
 if __name__ == '__main__':
     main()

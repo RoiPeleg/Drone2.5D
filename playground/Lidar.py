@@ -32,11 +32,11 @@ class Lidar:
         start_pos = position
         direction = make_direction(rotation)
         for circle_dir in self.__circle_coords:
-            print(circle_dir)
+            # print(circle_dir)
             dot_product = np.dot(direction, circle_dir)
             scan_angle = math.acos(np.clip(dot_product, -1., 1))
             scan_angle = np.degrees(scan_angle)
-            print(scan_angle)
+            # print(scan_angle)
             # if scan_angle in [0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi]:
             end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
             start_pos = start_pos.astype(int)
