@@ -17,7 +17,6 @@ class SimulationMode(Enum):
     RAW_SENSORS = 1,
     ICP_ADJUSTMENT = 2
 
-
 def main():
     pygame.init()
     pygame.display.set_caption('SLAM playground')
@@ -64,11 +63,12 @@ def main():
     running = True
     start_time = time.time()
     current_time_in_seconds = 0
-
+    rd = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                robot.stop_rd()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     simulation_mode = SimulationMode.RAW_SENSORS
@@ -84,6 +84,17 @@ def main():
                     # loop_frame = slam_front_end.create_loop_closure(sensor)
                     # gtsam_slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
                     break
+                if event.key == pygame.K_KP_PLUS:
+                    moving_step += 1
+                    robot.c_speed(1)
+                if event.key == pygame.K_KP_MINUS:
+                    moving_step -= 1
+                    robot.c_speed(-1)
+                if event.key == pygame.K_p:
+                    if not rd:
+                        robot.init_rd(moving_step,world)
+                    else:
+                        robot.stop_rd()
                 if event.key == pygame.K_LEFT:
                     robot.rotate(rotation_step, world)
                 if event.key == pygame.K_RIGHT:
@@ -97,20 +108,20 @@ def main():
             if counter_in_second > 9:
                 counter_in_second = 0
             counter_in_second = counter_in_second + 1
-            # print(counter_in_second)
-            # print(((time.time() - start_time) % 10))
-            # print(counter_in_second * 1/SAMPLE_PER_SECOND)
             for sensor in sensors:
                 sensors_view.take_measurements(odometry, sensor)
-                slam_front_end.add_key_frame(sensor)
+                
 
         if time.time() - start_time > current_time_in_seconds:
+            slam_front_end.add_key_frame(sensor)
             current_time_in_seconds = current_time_in_seconds + 1
             current_time_to_live = current_time_to_live - 1
             battery_text_surface = font.render(f'Battery: {current_time_to_live/maximum_time_to_live*100}%', True, (255, 0, 0))
+            
 
         world.draw(screen)
         robot.draw(screen, world.height, world.width)
+        
         if simulation_mode == SimulationMode.RAW_SENSORS:
             sensors_view.draw(screen, offset=world.width)
             screen.blit(sensors_text_surface, dest=(15, 15))
@@ -118,7 +129,11 @@ def main():
             slam_front_end.draw(screen, offset=world.width)
             screen.blit(icp_text_surface, dest=(30, 15))
 
-        screen.blit(battery_text_surface, dest=(600, 15))
+        screen.blit(battery_text_surface, dest=(550, 15))
+        opticalflow_text_surface = font.render(f'opticalflow: {robot.odomentry.optical}', True, (255, 0, 0))
+        screen.blit(opticalflow_text_surface, dest=(250, 570))
+        gyro_text_surface = font.render(f'gyro: {robot.odomentry.gyro}', True, (255, 0, 0))
+        screen.blit(gyro_text_surface, dest=(700, 570))
         pygame.display.flip()
 
     pygame.quit()
