@@ -28,7 +28,7 @@ def main():
 
     world = World(args.filename)
     odometry = Odometry(mu=0, sigma=3)  # noised measurements
-    sensors = [Lidar(dist_range=100, fov=30, mu=0, sigma=1)]  # noised measurements
+    sensors = [Lidar(dist_range=100, fov=90, mu=0, sigma=1)]  # noised measurements
     robot = Robot(odometry, sensors)
     sensors_view = RawSensorsView(world.height, world.width)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)

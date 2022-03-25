@@ -16,8 +16,7 @@ class Lidar:
         self.__obstacles = None
 
         # generate scan arc coordinates
-        num_scan_points = 360
-        theta = np.array([0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi]) #np.linspace(0, 2 * np.pi, num_scan_points)
+        theta = np.array([0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi])
         x = np.cos(theta)
         y = np.sin(theta)
         self.__circle_coords = np.stack([x, y], axis=1)
@@ -32,21 +31,24 @@ class Lidar:
         start_pos = position
         direction = make_direction(rotation)
         for circle_dir in self.__circle_coords:
-            # print(circle_dir)
             dot_product = np.dot(direction, circle_dir)
             scan_angle = math.acos(np.clip(dot_product, -1., 1))
             scan_angle = np.degrees(scan_angle)
-            # print(scan_angle)
-            # if scan_angle in [0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi]:
+
             end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
             start_pos = start_pos.astype(int)
-            end_pos = end_pos.astype(int)
+
             ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
             for pos in zip(ys, xs):
                 is_obstacle, obstacle_id = world.is_obstacle(pos)
                 if is_obstacle:
                     obstacles_coords.append(pos)
                     obstacles_ids.append(obstacle_id)
+                    # print('new:')
+                    # print('len(obstacles_coords): ', len(obstacles_coords))
+                    # print('obstacle pos: ', pos)
+                    # print('robot pos: ', position)
+                    print('distance between robot and obstacle: ', math.sqrt((pos[0] - position[0])**2 + (pos[1] - position[1])**2))
                     break
 
         if len(obstacles_coords) > 0:
@@ -68,12 +70,22 @@ class Lidar:
         color = (128, 128, 128)
         start_pos = pygame.math.Vector2(position[0], position[1])
         dir = pygame.math.Vector2(direction[0], direction[1])
-        dir = dir.rotate(self.__fov / 2)
-        end_pos1 = start_pos + dir * self.__dist_range
-        dir = dir.rotate(-self.__fov)
-        end_pos2 = start_pos + dir * self.__dist_range
-        start_pos = to_screen_coords(h, w, start_pos)
-        end_pos1 = to_screen_coords(h, w, end_pos1, clip=False)
-        end_pos2 = to_screen_coords(h, w, end_pos2, clip=False)
-        pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos1, width=2)
-        pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos2, width=2)
+        
+        # dir = dir.rotate(self.__fov)
+        # end_pos = start_pos + dir * self.__dist_range
+        # pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos, width=2)
+        
+        # start_pos = pygame.math.Vector2(position[0], position[1])
+        # dir = pygame.math.Vector2(direction[0], direction[1])
+
+        for i in range(0,4):
+            dir = dir.rotate(i*self.__fov)
+            end_pos = start_pos + dir * self.__dist_range
+        # dir = dir.rotate(-2*self.__fov)
+        # end_pos2 = start_pos + dir * self.__dist_range
+            start_pos = to_screen_coords(h, w, start_pos)
+            end_pos = to_screen_coords(h, w, end_pos, clip=False)
+        # end_pos2 = to_screen_coords(h, w, end_pos2, clip=False)
+            pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos, width=2)
+        # pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos2, width=2)
+            start_pos = pygame.math.Vector2(position[0], position[1])
