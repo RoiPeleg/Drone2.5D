@@ -11,7 +11,17 @@ class RawSensorsView:
         self.__w = world_w
         self.__map = np.full((world_h, world_w), 255, dtype=np.uint8)
         self.__prev_pos = None
+        self.__prev_pos_real = None
+        self.__opticalflow = 0
 
+    # measures optical flow 
+    def take_measurements_optical(self,odometry):
+        if self.__prev_pos_real is not None:
+            p =  odometry.position
+            self.__opticalflow = abs(p - self.prev_pos_real)
+        self.___prev_pos_real = odometry.position
+
+    # mesures lidar distances
     def take_measurements(self, odometry, sensor):
         # Process odometery
         position = to_screen_coords(self.__h, self.__w, odometry.position)
@@ -38,6 +48,10 @@ class RawSensorsView:
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
+
+    @property
+    def opticalflow(self):
+        return self.__opticalflow
 
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)

@@ -18,9 +18,7 @@ class Odometry(Body):
 
     def track_move(self, dist):
         noise = np.random.normal(self.__mu, self.__sigma)
-        prev = self.position
         self.move(dist + noise)
-        self.__optical = self.position - prev
 
     @property
     def optical(self):

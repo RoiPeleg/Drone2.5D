@@ -44,11 +44,6 @@ class Lidar:
                 if is_obstacle:
                     obstacles_coords.append(pos)
                     obstacles_ids.append(obstacle_id)
-                    # print('new:')
-                    # print('len(obstacles_coords): ', len(obstacles_coords))
-                    # print('obstacle pos: ', pos)
-                    # print('robot pos: ', position)
-                    print('distance between robot and obstacle: ', math.sqrt((pos[0] - position[0])**2 + (pos[1] - position[1])**2))
                     break
 
         if len(obstacles_coords) > 0:

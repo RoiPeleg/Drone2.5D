@@ -7,7 +7,7 @@ import time
 import random
 
 class Robot(Body):
-    def __init__(self, odometry, sensors):
+    def __init__(self, odometry, sensor):
         super().__init__()
         self.__radius = 10
         self.__odomentry = odometry
@@ -15,21 +15,21 @@ class Robot(Body):
         self.__auto = False
         self.t_rd = None
         self.gyro = 0 
-        self.__sensors = sensors
+        self.__sensor = sensor
+        self.pitch = 0
+        self.roll = 0
 
     def rotate(self, angle, world):
         super().rotate(angle)
         self.__odomentry.track_rotate(angle)
-        for sensor in self.__sensors:
-           sensor.scan(self.position, self.rotation, world)
+        self.__sensor.scan(self.position, self.rotation, world)
 
     def move(self, dist, world):
         if world.allow_move(self.try_move(dist), self.size):
             super().move(dist)
             self.__odomentry.track_move(dist)
-            self.__opticalflow = 1
-            for sensor in self.__sensors:
-                sensor.scan(self.position, self.rotation, world)
+            self.__sensor.scan(self.position, self.rotation, world)
+
 
     def random_walk(self,dist,world):
         while self.__auto:
@@ -57,9 +57,14 @@ class Robot(Body):
     @property
     def odomentry(self):
         return self.__odomentry
+        
     @property
     def size(self):
         return self.__radius
+    
+    @property
+    def sensor(self):
+        return self.__sensor
 
     def draw(self, screen, h, w):
         # Draw robot in the real environment
@@ -69,5 +74,13 @@ class Robot(Body):
         dir_pos = self.position + direction * self.__radius * 2
         dir_pos = to_screen_coords(h, w, dir_pos)
         pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=2)
-        for sensor in self.__sensors: 
-            sensor.draw(screen, h, w, self.position, direction)
+        self.__sensor.draw(screen, h, w, self.position, direction)
+    
+    def report_all_data(self):
+        result = []
+        result.append(self.pitch)
+        result.append(self.roll)
+        for s in self.__sensors:
+            result.append(s.report())
+        print("result: ", result)
+        return result
