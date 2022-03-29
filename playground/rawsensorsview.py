@@ -6,20 +6,28 @@ from playground.utils.transform import to_screen_coords, transform_points
 
 
 class RawSensorsView:
-    def __init__(self, world_h, world_w):
+    def __init__(self, world_h, world_w, world_z):
         self.__h = world_h
         self.__w = world_w
+        self.__z = world_z
         self.__map = np.full((world_h, world_w), 255, dtype=np.uint8)
         self.__prev_pos = None
         self.__prev_pos_real = None
         self.__opticalflow = 0
+
+        self.__drone_height = 0.75 * self.__z
+
+    # measures barometer
+    def take_measurements_barometer(self,odometry):
+        self.__drone_height = 0.75 * self.__z
+        self.__drone_height = abs(self.__drone_height + odometry.z)
 
     # measures optical flow 
     def take_measurements_optical(self,odometry):
         if self.__prev_pos_real is not None:
             p =  odometry.position
             self.__opticalflow = abs(p - self.prev_pos_real)
-        self.___prev_pos_real = odometry.position
+        self.__prev_pos_real = odometry.position
 
     # mesures lidar distances
     def take_measurements(self, odometry, sensor):
@@ -50,8 +58,16 @@ class RawSensorsView:
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
 
     @property
+    def drone_height(self):
+        return self.__drone_height
+
+    @property
     def opticalflow(self):
         return self.__opticalflow
+    
+    @property
+    def prev_pos_real(self):
+        return self.__prev_pos_real
 
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)

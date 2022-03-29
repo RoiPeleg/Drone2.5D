@@ -8,8 +8,9 @@ class Odometry(Body):
         super().__init__()
         self.__mu = mu
         self.__sigma = sigma
-        self.__optical = 10
+
         self.__gyro = 0
+        self.__z = 0
 
     def track_rotate(self, angle):
         noise = np.random.normal(self.__mu, self.__sigma)
@@ -21,9 +22,11 @@ class Odometry(Body):
         self.move(dist + noise)
 
     @property
-    def optical(self):
-        return self.__optical
+    def z(self):
+        noise = np.random.normal(self.__mu, self.__sigma)
+        return self.__z + noise
 
     @property
     def gyro(self):
-        return self.__gyro
+        noise = np.random.normal(self.__mu, self.__sigma)
+        return self.__gyro + noise

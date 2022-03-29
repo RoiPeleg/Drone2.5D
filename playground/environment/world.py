@@ -11,11 +11,12 @@ class World:
         Physical environment simulation element
     """
 
-    def __init__(self, map_file_name):
+    def __init__(self, map_file_name, max_z):
         self.__map_file_name = map_file_name
         self.__width = 0
         self.__height = 0
         self.__map = None
+        self.__max_z = max_z
         self.read_map()
 
         # Initialize Hilbert curve object for generating obstacle ids
@@ -38,6 +39,10 @@ class World:
     @property
     def height(self):
         return self.__height
+    
+    @property
+    def max_z(self):
+        return self.__max_z
 
     def draw(self, screen):
         transposed_map = np.transpose(self.__map)

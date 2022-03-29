@@ -1,3 +1,4 @@
+from sqlite3 import Timestamp
 import pygame
 import argparse
 from enum import Enum
@@ -18,6 +19,22 @@ class SimulationMode(Enum):
     RAW_SENSORS = 1,
     ICP_ADJUSTMENT = 2        
 
+class Clock:
+        def __init__(self, maximum_time_to_live, current_time_to_live):
+            self.__maximum_time_to_live = maximum_time_to_live
+            self.__current_time_to_live = current_time_to_live
+        
+        def decay(self):
+            self.__current_time_to_live -= 0.1
+
+        @property
+        def current_time_to_live(self):
+            return self.__current_time_to_live
+        
+        @property
+        def maximum_time_to_live(self):
+            return self.__maximum_time_to_live
+
 def main():
     pygame.init()
     pygame.display.set_caption('SLAM playground')
@@ -27,31 +44,29 @@ def main():
 
     # Create simulation objects
 
-    world = World(args.filename)
-    odometry = Odometry(mu=0, sigma=3)  # noised measurements
+    world = World(args.filename, max_z= 3)
+    odometry = Odometry(mu=0, sigma=1)  # noised measurements
     sensor = Lidar(dist_range=100, fov=90, mu=0, sigma=1)  # noised measurements
     robot = Robot(odometry, sensor)
-    sensors_view = RawSensorsView(world.height, world.width)
+    sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
 
-    maximum_time_to_live = 8*60.0 #seconds
-    current_time_to_live = maximum_time_to_live
-
+    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    
     # Initialize rendering
     screen = pygame.display.set_mode([world.width * 2, world.height])
     font = pygame.font.Font(pygame.font.get_default_font(), 24)
     sensors_text_surface = font.render('Sensors', True, (255, 0, 0))
     icp_text_surface = font.render('ICP', True, (255, 0, 0))
-    battery_text_surface = font.render(f'Battery: {current_time_to_live/maximum_time_to_live*100}%', True, (255, 0, 0))
-    opticalflow_text_surface = font.render(f'optical: {sensors_view.opticalflow}', True, (255, 0, 0))
+    
     # Robot movement configuration
     rotation_step = 10  # degrees
     moving_step = 10  # points
 
     # make first initialization
-    def clock():
+    def clock_fun():
         while True:
             # lidar sensor:
             sensors_view.take_measurements(odometry, sensor)
@@ -59,15 +74,18 @@ def main():
             robot.sensor.scan(robot.position, robot.rotation, world)
             
             # battery sensor:
-            current_time_to_live = current_time_to_live - 0.1
+            clock.decay()
             
             # optical flow sensor:
             sensors_view.take_measurements_optical(odometry)
 
+            # barometer sensor:
+            sensors_view.take_measurements_barometer(odometry)
+
             # gyro sensor:
             time.sleep(0.1)
 
-    t_clock = threading.Thread(target=clock, args=())
+    t_clock = threading.Thread(target=clock_fun, args=())
 
     robot.move(0, world)
     sensors_view.take_measurements(odometry, sensor)
@@ -127,11 +145,19 @@ def main():
         if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
             slam_front_end.draw(screen, offset=world.width)
             screen.blit(icp_text_surface, dest=(30, 15))
-        screen.blit(opticalflow_text_surface, dest=(550, 500))
-        battery_text_surface = font.render(f'Battery: {current_time_to_live/maximum_time_to_live*100}%', True, (255, 0, 0))
+        
+        opticalflow_text_surface = font.render(f'optical: {sensors_view.opticalflow}', True, (255, 0, 0))
+        screen.blit(opticalflow_text_surface, dest=(500, 570))
+        
+        barometer_text_surface = font.render(f'z: {round(sensors_view.drone_height, 2)}', True, (255, 0, 0))
+        screen.blit(barometer_text_surface, dest=(400, 570))
+        
+        battery_text_surface = font.render(f'Battery: {round(clock.current_time_to_live/clock.maximum_time_to_live*100, 2)}%', True, (255, 0, 0))
         screen.blit(battery_text_surface, dest=(550, 15))
-        gyro_text_surface = font.render(f'gyro: {robot.odomentry.gyro}', True, (255, 0, 0))
+        
+        gyro_text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
         screen.blit(gyro_text_surface, dest=(700, 570))
+        
         pygame.display.flip()
 
     t_clock.join()
