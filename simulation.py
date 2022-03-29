@@ -100,7 +100,8 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                robot.stop_rd()
+                if rd :
+                    robot.stop_rd()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     simulation_mode = SimulationMode.RAW_SENSORS
@@ -125,6 +126,7 @@ def main():
                 if event.key == pygame.K_p:
                     if not rd:
                         robot.init_rd(moving_step,world)
+                        rd = True
                     else:
                         robot.stop_rd()
                 if event.key == pygame.K_LEFT:
