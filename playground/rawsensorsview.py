@@ -16,11 +16,13 @@ class RawSensorsView:
         self.__opticalflow = 0
 
         self.__drone_height = 0.75 * self.__z
+        self.__dis_from_roof = self.__z - self.__drone_height
 
     # measures barometer
     def take_measurements_barometer(self,odometry):
         self.__drone_height = 0.75 * self.__z
         self.__drone_height = abs(self.__drone_height + odometry.z)
+        self.__dis_from_roof = self.__z - self.__drone_height
 
     # measures optical flow 
     def take_measurements_optical(self,odometry):
@@ -68,6 +70,10 @@ class RawSensorsView:
     @property
     def prev_pos_real(self):
         return self.__prev_pos_real
+    
+    @property
+    def dis_from_roof(self):
+        return self.__dis_from_roof
 
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)
