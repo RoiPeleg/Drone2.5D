@@ -12,6 +12,9 @@ from playground.robot import Robot
 from playground.odometry import Odometry
 from playground.Lidar import Lidar
 from playground.environment.world import World
+from playground.DroneController import DroneController
+from playground.Algorithms import Algorithms
+
 
 import time
 
@@ -47,11 +50,13 @@ def main():
     world = World(args.filename, max_z= 3)
     odometry = Odometry(mu=0, sigma=1)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
-    robot = Robot(odometry, sensor)
+    robot = Robot(odometry, sensor, world)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
+    controller = DroneController(robot, sensors_view)
+    algo = Algorithms(controller)
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     
@@ -75,6 +80,7 @@ def main():
             
             # battery sensor:
             clock.decay()
+            sensors_view.take_measurements_battery(round(clock.current_time_to_live/clock.maximum_time_to_live*100, 2))
             
             # optical flow sensor:
             sensors_view.take_measurements_optical(odometry)
@@ -87,21 +93,21 @@ def main():
 
     t_clock = threading.Thread(target=clock_fun, args=())
 
-    robot.move(200, world)
+    robot.move(200)
     sensors_view.take_measurements(odometry, sensor)
     slam_front_end.add_key_frame(sensor)
     
     # start simulation loop
     simulation_mode = SimulationMode.RAW_SENSORS
     running = True
-    rd = False
+    algo_flag = False
     t_clock.start()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                if rd :
-                    robot.stop_rd()
+                if algo_flag :
+                    algo.stop()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     simulation_mode = SimulationMode.RAW_SENSORS
@@ -124,19 +130,19 @@ def main():
                     moving_step -= 1
                     robot.c_speed(-1)
                 if event.key == pygame.K_p:
-                    if not rd:
-                        robot.init_rd(moving_step,world)
-                        rd = True
+                    if not algo_flag:
+                        algo.run()
+                        algo_flag = True
                     else:
-                        robot.stop_rd()
+                        algo.stop()
                 if event.key == pygame.K_LEFT:
-                    robot.rotate(rotation_step, world)
+                    robot.rotate(rotation_step)
                 if event.key == pygame.K_RIGHT:
-                    robot.rotate(-rotation_step, world)
+                    robot.rotate(-rotation_step)
                 if event.key == pygame.K_UP:
-                    robot.move(moving_step, world)
+                    robot.move(moving_step)
                 if event.key == pygame.K_DOWN:
-                    robot.move(-moving_step, world)
+                    robot.move(-moving_step)
 
         world.draw(screen)
         robot.draw(screen, world.height, world.width)

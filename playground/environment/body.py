@@ -9,6 +9,7 @@ class Body:
 
     def __init__(self):
         self.__pos = np.zeros(2)
+        self.__altitude = 0
         self.__rotation_matrix = np.identity(3)
 
     def rotate(self, angle):
@@ -17,16 +18,23 @@ class Body:
 
     def move(self, dist):
         self.__pos = self.try_move(dist)
-
+    
     def try_move(self, dist):
         direction = make_direction(self.__rotation_matrix)
         new_pos = self.__pos.copy()
         new_pos += direction * dist
         return new_pos
 
+    def set_altitude(self, alt):
+        self.__altitude = alt
+
     @property
     def size(self):
         return 1
+
+    @property
+    def altitude(self):
+        return self.__altitude
 
     @property
     def position(self):

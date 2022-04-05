@@ -14,14 +14,17 @@ class RawSensorsView:
         self.__prev_pos = None
         self.__prev_pos_real = None
         self.__opticalflow = 0
+        self.__battery = 100
 
-        self.__drone_height = 0.75 * self.__z
-        self.__dis_from_roof = self.__z - self.__drone_height
+        self.__drone_height = 0
+        self.__dis_from_roof = 0
 
+    def take_measurements_battery(self,battery_prectange):
+        self.__battery = battery_prectange
+    
     # measures barometer
-    def take_measurements_barometer(self,odometry):
-        self.__drone_height = 0.75 * self.__z
-        self.__drone_height = abs(self.__drone_height + odometry.z)
+    def take_measurements_barometer(self, odometry):
+        self.__drone_height = odometry.altitude
         self.__dis_from_roof = self.__z - self.__drone_height
 
     # measures optical flow 
@@ -63,6 +66,10 @@ class RawSensorsView:
     def drone_height(self):
         return self.__drone_height
 
+    @property
+    def battery(self):
+        return self.__battery
+        
     @property
     def opticalflow(self):
         return self.__opticalflow
