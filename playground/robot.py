@@ -9,7 +9,7 @@ import random
 class Robot(Body):
     def __init__(self, odometry, sensor):
         super().__init__()
-        self.__radius = 10
+        self.__radius = 4 # every pixel is 2.5 cm -> 4 pixles * 2.5 =10 cm rifus of the drone
         self.__odomentry = odometry
         self.__speed = 10
         self.__auto = False

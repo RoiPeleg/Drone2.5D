@@ -46,7 +46,7 @@ def main():
 
     world = World(args.filename, max_z= 3)
     odometry = Odometry(mu=0, sigma=1)  # noised measurements
-    sensor = Lidar(dist_range=100, fov=90, mu=0, sigma=1)  # noised measurements
+    sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
     robot = Robot(odometry, sensor)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
@@ -87,7 +87,7 @@ def main():
 
     t_clock = threading.Thread(target=clock_fun, args=())
 
-    robot.move(0, world)
+    robot.move(200, world)
     sensors_view.take_measurements(odometry, sensor)
     slam_front_end.add_key_frame(sensor)
     
