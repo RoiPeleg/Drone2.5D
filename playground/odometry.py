@@ -25,7 +25,7 @@ class Odometry(Body):
 
     @property
     def z(self):
-        noise = np.random.normal(self.__mu, self.__sigma)
+        noise = np.random.normal(self.__mu, self.__sigma/200)
         return self.__z + noise
 
     @property
