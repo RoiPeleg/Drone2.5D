@@ -8,8 +8,8 @@ class Robot(Body):
         super().__init__()
         self.__radius = 4 # every pixel is 2.5 cm -> 4 pixles * 2.5 = 10 cm raduis of the drone
         self.__odomentry = odometry
-        self.__speed_x = 10
-        self.__speed_y = 10
+        self.__speed_x = 0
+        self.__speed_y = 0
         self.gyro = 0 
         self.__sensor = sensor
         self.__world = world
@@ -62,5 +62,5 @@ class Robot(Body):
         direction = make_direction(self.rotation)
         dir_pos = self.position + direction * self.__radius * 2
         dir_pos = to_screen_coords(h, w, dir_pos)
-        pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=2)
+        pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=10)
         self.__sensor.draw(screen, h, w, self.position, direction)

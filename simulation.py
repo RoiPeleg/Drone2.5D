@@ -164,7 +164,7 @@ def main():
         screen.blit(battery_text_surface, dest=(550, 15))
         
         gyro_text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
-        screen.blit(gyro_text_surface, dest=(700, 570))
+        screen.blit(gyro_text_surface, dest=(900, 570))
         
         pygame.display.flip()
 

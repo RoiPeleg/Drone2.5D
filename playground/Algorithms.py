@@ -21,16 +21,15 @@ class Algorithms:
     def stop(self):
         self.__auto = False
         self.t_rd.join()
-
     
     def random_walk(self):
         self.__controller.takeoff()
         while self.__auto:
-            d = random.randint(-1,1)
-            self.__controller.yaw(d)
+            self.__controller.yaw(random.choice([-1,1]))
+            
+            self.__controller.pitch(random.choice([-1,1]))
             time.sleep(0.8)
 
-            self.__controller.sensors_data()
-            raise BaseException()
-
-        self.__cont__controller.land()
+            # self.__controller.sensors_data()
+ 
+        self.__controller.land()

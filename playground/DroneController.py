@@ -1,7 +1,7 @@
 from playground.robot import Robot
 import time
 import threading
-
+import math
 import numpy as np
 
 # Drone API
@@ -27,7 +27,7 @@ class DroneController:
 
     def move(self):
         while self.__running:
-            velocity = self.__robot.speed
+            velocity = self.__robot.speed_x
 
             dist = velocity / self.__resolution
             # velocity = self.__pitch/100
@@ -37,7 +37,7 @@ class DroneController:
         self.__running = False
         self.t_move.join()
 
-    def yaw(self,dieraction):
+    def yaw(self, dieraction):
         assert dieraction == 1 or dieraction == -1, "dieraction should be 1 or -1, dieraction= " + str(dieraction)
         self.__robot.rotate(dieraction * self.__angle_inc)
 
@@ -45,13 +45,21 @@ class DroneController:
         assert sign == 1 or sign == -1, "sign should be 1 or -1, sign= " + str(sign)
         
         self.__pitch += sign * self.__angle_inc
-        velocity_x =  (np.sin(self.__pitch) * self.__angle_inc * self.__robot.size) // (self.__resolution*100)
-        
+        if self.__pitch < 0:
+            self.__pitch = 0
+        if self.__pitch > 100:
+            self.__pitch = 100
+
+        velocity_x =  (math.sin(math.radians(self.__pitch)) * self.__angle_inc * self.__robot.size)
+        print(velocity_x)
         if velocity_x < 0:
             velocity_x = 0
         if velocity_x > self.__max_velocity:
-            velocity_x = self.___max_velocity
-            
+            velocity_x = self.__max_velocity
+
+        print("pitch: ", self.__pitch)
+        print("velocity_x: ", velocity_x)
+
         self.__robot.c_speed_x(velocity_x)
         
 
