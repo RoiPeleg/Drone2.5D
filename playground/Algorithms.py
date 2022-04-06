@@ -29,4 +29,8 @@ class Algorithms:
             d = random.randint(-1,1)
             self.__controller.yaw(d)
             time.sleep(0.8)
+
+            self.__controller.sensors_data()
+            raise BaseException()
+
         self.__cont__controller.land()

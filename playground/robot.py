@@ -6,9 +6,10 @@ from playground.utils.transform import to_screen_coords, make_direction
 class Robot(Body):
     def __init__(self, odometry, sensor, world):
         super().__init__()
-        self.__radius = 4 # every pixel is 2.5 cm -> 4 pixles * 2.5 = 10 cm ridus of the drone
+        self.__radius = 4 # every pixel is 2.5 cm -> 4 pixles * 2.5 = 10 cm raduis of the drone
         self.__odomentry = odometry
-        self.__speed = 10
+        self.__speed_x = 10
+        self.__speed_y = 10
         self.gyro = 0 
         self.__sensor = sensor
         self.__world = world
@@ -28,13 +29,20 @@ class Robot(Body):
         super().set_altitude(new_alt)
         self.__odomentry.track_altitude(new_alt)
 
-    def c_speed(self, velo):   
-        self.__speed = velo
+    def c_speed_x(self, velo):   
+        self.__speed_x = velo
+    
+    def c_speed_y(self, velo):   
+        self.__speed_y = velo
     
     @property
-    def speed(self):
-        return self.__speed
+    def speed_x(self):
+        return self.__speed_x
 
+    @property
+    def speed_y(self):
+        return self.__speed_y
+        
     @property
     def odomentry(self):
         return self.__odomentry

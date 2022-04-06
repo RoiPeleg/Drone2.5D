@@ -72,7 +72,7 @@ def main():
 
     # make first initialization
     def clock_fun():
-        while True:
+        while threading.main_thread().isAlive():
             # lidar sensor:
             sensors_view.take_measurements(odometry, sensor)
             slam_front_end.add_key_frame(sensor)
@@ -168,8 +168,13 @@ def main():
         
         pygame.display.flip()
 
-    t_clock.join()
-    pygame.quit()
+    try:
+        controller.stop()
+        algo.stop()
+        pygame.quit()
+        t_clock.join()
+    except RuntimeError:
+        print("thread not started")
 
 if __name__ == '__main__':
     main()

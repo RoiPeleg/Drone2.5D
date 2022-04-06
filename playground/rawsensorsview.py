@@ -19,6 +19,8 @@ class RawSensorsView:
         self.__drone_height = 0
         self.__dis_from_roof = 0
 
+        self.__dis_from_obstacles = np.empty(4)
+
     def take_measurements_battery(self,battery_prectange):
         self.__battery = battery_prectange
     
@@ -52,6 +54,24 @@ class RawSensorsView:
         obstacles = sensor.get_obstacles()
         if obstacles is not None:
             obstacles = obstacles.copy()
+            self.__distance_from_obstacles = np.empty(4)
+            ls = []
+
+            # calculates ditances from all 4 lidars inf if htere is no obstacle
+            for obs_index in range(len(obstacles)):
+                if obstacles[obs_index][0] == np.inf:
+                    self.__distance_from_obstacles.append(np.inf)
+                    ls.append(obs_index)
+                else:
+                    obs = np.array(obstacles[obs_index, :2])
+                    pos = np.array(odometry.position)
+                    d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
+                    self.__distance_from_obstacles[obs_index] = d
+            
+            # remove inf form real obsticals        
+            for i in ls:
+                obstacles.pop(i)
+            
             # convert points into world coordinate system
             obstacles = transform_points(obstacles[:, :2], odometry.rotation)
             obstacles += odometry.position[:2].astype(int)
@@ -61,6 +81,12 @@ class RawSensorsView:
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
+
+
+    @property
+    def distance_from_obstacles(self):
+        return self.__distance_from_obstacles
+
 
     @property
     def drone_height(self):

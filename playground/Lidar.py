@@ -1,5 +1,7 @@
 import math
 
+from cv2 import add
+
 import pygame
 import numpy as np
 from skimage.draw import line_aa
@@ -36,19 +38,27 @@ class Lidar:
             scan_angle = np.degrees(scan_angle)
 
             end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
+
             start_pos = start_pos.astype(int)
 
             ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+            added_obs = False
             for pos in zip(ys, xs):
                 is_obstacle, obstacle_id = world.is_obstacle(pos)
                 if is_obstacle:
                     obstacles_coords.append(pos)
                     obstacles_ids.append(obstacle_id)
+                    added_obs = True
                     break
-
+            
+            if not added_obs:
+                obstacles_coords.append([np.inf, np.inf])
+                obstacles_ids.append(-1)
+                        
         if len(obstacles_coords) > 0:
             obstacles_coords = np.array(obstacles_coords)
             obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
+            
             # Transform obstacles into the sensor/robot coordinate system
             obstacles_coords -= start_pos
             obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
