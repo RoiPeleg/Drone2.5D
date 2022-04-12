@@ -33,3 +33,40 @@ class Algorithms:
             # self.__controller.sensors_data()
  
         self.__controller.land()
+
+    def Emengercy(self):
+        pass
+
+    def Tunnel(self):
+        pass
+
+    def Fly_Forward(self):
+        pass
+
+    def RotateCCW(self):
+        pass
+
+    def RotateCW(self):
+        pass
+
+    def BAT(self):
+        emengercy_tresh = 0
+        tunnel_tresh = 0
+        front_tresh = 0
+        right_far_tresh = 0
+
+
+        front = -1 # distance of the front sensor of the drone
+        right = -1 # distance of the right sensor of the drone
+        left = -1 # distance of the left sensor of the drone
+        while self.__auto:
+            if front < emengercy_tresh:
+                self.Emengercy()
+            elif front < front_tresh:
+                self.RotateCCW()
+            elif left < tunnel_tresh and right < tunnel_tresh:
+                self.Tunnel()
+            elif right > right_far_tresh:
+                self.RotateCW()
+            else:
+                self.Fly_Forward()
