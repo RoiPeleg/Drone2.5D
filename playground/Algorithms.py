@@ -44,10 +44,11 @@ class Algorithms:
         pass
 
     def RotateCCW(self):
-        pass
+        self.__controller.yaw(-1)
 
     def RotateCW(self):
-        pass
+        for i in range(0,9):
+            self.__controller.yaw(1)
 
     def BAT(self):
         emengercy_tresh = 0
