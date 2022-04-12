@@ -56,10 +56,11 @@ class Algorithms:
         front_tresh = 0
         right_far_tresh = 0
 
-
         front = -1 # distance of the front sensor of the drone
         right = -1 # distance of the right sensor of the drone
         left = -1 # distance of the left sensor of the drone
+        front, right, left, back, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ = self.__controller.sensors_data()
+        
         while self.__auto:
             if front < emengercy_tresh:
                 self.Emengercy()
