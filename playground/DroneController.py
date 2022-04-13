@@ -24,7 +24,6 @@ class DroneController:
         self.t_move = threading.Thread(target=self.move, args=())
         self.__running = True
 
-
     def move(self):
         while self.__running:
             velocity = self.__robot.speed_x
@@ -50,15 +49,14 @@ class DroneController:
         if self.__pitch > 100:
             self.__pitch = 100
 
-        velocity_x =  (math.sin(math.radians(self.__pitch)) * self.__angle_inc * self.__robot.size)
-        print(velocity_x)
+        velocity_x =  (math.sin(math.radians(self.__pitch)) * self.__angle_inc) // (self.__resolution*100)
         if velocity_x < 0:
             velocity_x = 0
         if velocity_x > self.__max_velocity:
             velocity_x = self.__max_velocity
 
-        print("pitch: ", self.__pitch)
-        print("velocity_x: ", velocity_x)
+        # print("pitch: ", self.__pitch)
+        # print("velocity_x: ", velocity_x)
 
         self.__robot.c_speed_x(velocity_x)
         
@@ -67,7 +65,7 @@ class DroneController:
         assert sign == 1 or sign == -1, "sign should be 1 or -1, sign= " + str(sign)
         
         self.__pitch += sign * self.__angle_inc
-        velocity_y =  (np.cos(self.__pitch) * self.__angle_inc * self.__robot.size) // (self.__resolution*100)
+        velocity_y =  (np.cos(math.radians(self.__pitch)) * self.__angle_inc) // (self.__resolution*100)
         
         if velocity_y < 0:
             velocity_y = 0
@@ -92,8 +90,8 @@ class DroneController:
     def sensors_data(self):
         # [d0-d4, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ]
 
-        ds = self.__sensor_view.distance_from_obstacles * self.__resolution
-
+        ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
+        
         data = {
             "d_left": ds[1],
             "d_right": ds[3],
@@ -115,8 +113,4 @@ class DroneController:
             "acc_y": None,
             "acc_z": None,
         }
-
-        print(data)
-        print(np.inf)
-
         return data

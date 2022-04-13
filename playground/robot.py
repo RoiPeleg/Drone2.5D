@@ -62,5 +62,5 @@ class Robot(Body):
         direction = make_direction(self.rotation)
         dir_pos = self.position + direction * self.__radius * 2
         dir_pos = to_screen_coords(h, w, dir_pos)
-        pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=10)
+        pygame.draw.line(screen, color=(0, 255, 0), start_pos=position, end_pos=dir_pos, width=5)
         self.__sensor.draw(screen, h, w, self.position, direction)

@@ -52,9 +52,10 @@ class Lidar:
                     break
             
             if not added_obs:
-                obstacles_coords.append([np.inf, np.inf])
+                obstacles_coords.append([-1, -1])
                 obstacles_ids.append(-1)
-                        
+
+
         if len(obstacles_coords) > 0:
             obstacles_coords = np.array(obstacles_coords)
             obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
@@ -75,22 +76,11 @@ class Lidar:
         color = (128, 128, 128)
         start_pos = pygame.math.Vector2(position[0], position[1])
         dir = pygame.math.Vector2(direction[0], direction[1])
-        
-        # dir = dir.rotate(self.__fov)
-        # end_pos = start_pos + dir * self.__dist_range
-        # pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos, width=2)
-        
-        # start_pos = pygame.math.Vector2(position[0], position[1])
-        # dir = pygame.math.Vector2(direction[0], direction[1])
 
         for i in range(0,4):
             dir = dir.rotate(i*self.__fov)
             end_pos = start_pos + dir * self.__dist_range
-        # dir = dir.rotate(-2*self.__fov)
-        # end_pos2 = start_pos + dir * self.__dist_range
             start_pos = to_screen_coords(h, w, start_pos)
             end_pos = to_screen_coords(h, w, end_pos, clip=False)
-        # end_pos2 = to_screen_coords(h, w, end_pos2, clip=False)
             pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos, width=2)
-        # pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos2, width=2)
             start_pos = pygame.math.Vector2(position[0], position[1])

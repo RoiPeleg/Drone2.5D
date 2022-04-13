@@ -22,7 +22,7 @@ class Odometry(Body):
         self.move(dist + noise)
 
     def track_altitude(self, alt):
-        noise = np.random.normal(self.__mu, self.__sigma/200)
+        noise = np.random.normal(self.__mu, self.__sigma/100)
         self.set_altitude(alt + noise)
 
     @property

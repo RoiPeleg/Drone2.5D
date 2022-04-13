@@ -56,7 +56,7 @@ def main():
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
     controller = DroneController(robot, sensors_view)
-    algo = Algorithms(controller)
+    algo = Algorithms(controller, mode="bat")
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     
@@ -100,81 +100,78 @@ def main():
     # start simulation loop
     simulation_mode = SimulationMode.RAW_SENSORS
     running = True
-    algo_flag = False
     t_clock.start()
+    algo.run()
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                if algo_flag :
-                    algo.stop()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    simulation_mode = SimulationMode.RAW_SENSORS
-                if event.key == pygame.K_i:
-                    simulation_mode = SimulationMode.ICP_ADJUSTMENT
-                if event.key == pygame.K_s:
-                    # we assume that we detect a loop so can try to optimize pose graph
-                    # loop_frame = slam_front_end.create_loop_closure(sensor)
-                    # slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                    break
-                if event.key == pygame.K_g:
-                    # we assume that we detect a loop so can try to optimize pose graph
-                    # loop_frame = slam_front_end.create_loop_closure(sensor)
-                    # gtsam_slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                    break
-                if event.key == pygame.K_KP_PLUS:
-                    moving_step += 1
-                    robot.c_speed(1)
-                if event.key == pygame.K_KP_MINUS:
-                    moving_step -= 1
-                    robot.c_speed(-1)
-                if event.key == pygame.K_p:
-                    if not algo_flag:
-                        algo.run()
-                        algo_flag = True
-                    else:
-                        algo.stop()
-                if event.key == pygame.K_LEFT:
-                    robot.rotate(rotation_step)
-                if event.key == pygame.K_RIGHT:
-                    robot.rotate(-rotation_step)
-                if event.key == pygame.K_UP:
-                    robot.move(moving_step)
-                if event.key == pygame.K_DOWN:
-                    robot.move(-moving_step)
+        try:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
 
-        world.draw(screen)
-        robot.draw(screen, world.height, world.width)
-        
-        if simulation_mode == SimulationMode.RAW_SENSORS:
-            sensors_view.draw(screen, offset=world.width)
-            screen.blit(sensors_text_surface, dest=(15, 15))
-        if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
-            slam_front_end.draw(screen, offset=world.width)
-            screen.blit(icp_text_surface, dest=(30, 15))
-        
-        opticalflow_text_surface = font.render(f'optical: {sensors_view.opticalflow}', True, (255, 0, 0))
-        screen.blit(opticalflow_text_surface, dest=(500, 570))
-        
-        barometer_text_surface = font.render(f'z: {round(sensors_view.drone_height, 2)}', True, (255, 0, 0))
-        screen.blit(barometer_text_surface, dest=(400, 570))
-        
-        battery_text_surface = font.render(f'Battery: {round(clock.current_time_to_live/clock.maximum_time_to_live*100, 2)}%', True, (255, 0, 0))
-        screen.blit(battery_text_surface, dest=(550, 15))
-        
-        gyro_text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
-        screen.blit(gyro_text_surface, dest=(900, 570))
-        
-        pygame.display.flip()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        simulation_mode = SimulationMode.RAW_SENSORS
+                    if event.key == pygame.K_i:
+                        simulation_mode = SimulationMode.ICP_ADJUSTMENT
+                    if event.key == pygame.K_s:
+                        # we assume that we detect a loop so can try to optimize pose graph
+                        # loop_frame = slam_front_end.create_loop_closure(sensor)
+                        # slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
+                        break
+                    if event.key == pygame.K_g:
+                        # we assume that we detect a loop so can try to optimize pose graph
+                        # loop_frame = slam_front_end.create_loop_closure(sensor)
+                        # gtsam_slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
+                        break
+                    if event.key == pygame.K_KP_PLUS:
+                        moving_step += 1
+                        robot.c_speed(1)
+                    if event.key == pygame.K_KP_MINUS:
+                        moving_step -= 1
+                        robot.c_speed(-1)
 
-    try:
-        controller.stop()
-        algo.stop()
-        pygame.quit()
-        t_clock.join()
-    except RuntimeError:
-        print("thread not started")
+                    if event.key == pygame.K_LEFT:
+                        robot.rotate(rotation_step)
+                    if event.key == pygame.K_RIGHT:
+                        robot.rotate(-rotation_step)
+                    if event.key == pygame.K_UP:
+                        robot.move(moving_step)
+                    if event.key == pygame.K_DOWN:
+                        robot.move(-moving_step)
+
+            world.draw(screen)
+            robot.draw(screen, world.height, world.width)
+            
+            if simulation_mode == SimulationMode.RAW_SENSORS:
+                sensors_view.draw(screen, offset=world.width)
+                screen.blit(sensors_text_surface, dest=(15, 15))
+            if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
+                slam_front_end.draw(screen, offset=world.width)
+                screen.blit(icp_text_surface, dest=(30, 15))
+            
+            opticalflow_text_surface = font.render(f'optical: {sensors_view.opticalflow}', True, (255, 0, 0))
+            screen.blit(opticalflow_text_surface, dest=(500, 570))
+            
+            barometer_text_surface = font.render(f'z: {round(sensors_view.drone_height, 2)}', True, (255, 0, 0))
+            screen.blit(barometer_text_surface, dest=(400, 570))
+            
+            battery_text_surface = font.render(f'Battery: {round(clock.current_time_to_live/clock.maximum_time_to_live*100, 2)}%', True, (255, 0, 0))
+            screen.blit(battery_text_surface, dest=(550, 15))
+            
+            gyro_text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
+            screen.blit(gyro_text_surface, dest=(900, 570))
+            
+            pygame.display.flip()
+
+        except KeyboardInterrupt:
+            # User interrupt the program with ctrl+c
+            running = False
+    
+    controller.stop()
+    algo.stop()
+    pygame.quit()
+    t_clock.join(0.1)
+    exit()
 
 if __name__ == '__main__':
     main()

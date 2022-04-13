@@ -13,13 +13,13 @@ class RawSensorsView:
         self.__map = np.full((world_h, world_w), 255, dtype=np.uint8)
         self.__prev_pos = None
         self.__prev_pos_real = None
-        self.__opticalflow = 0
+        self.__opticalflow = [0, 0]
         self.__battery = 100
 
         self.__drone_height = 0
         self.__dis_from_roof = 0
 
-        self.__dis_from_obstacles = np.empty(4)
+        self.__distance_from_obstacles = np.empty(4)
 
     def take_measurements_battery(self,battery_prectange):
         self.__battery = battery_prectange
@@ -57,10 +57,13 @@ class RawSensorsView:
             self.__distance_from_obstacles = np.empty(4)
             ls = []
 
+            # print("obstacles: 1", obstacles)
+            # print("distance: 1", self.__distance_from_obstacles)
+
             # calculates ditances from all 4 lidars inf if htere is no obstacle
             for obs_index in range(len(obstacles)):
-                if obstacles[obs_index][0] == np.inf:
-                    self.__distance_from_obstacles.append(np.inf)
+                if obstacles[obs_index][-1] == -1: #if obstacle not found
+                    self.__distance_from_obstacles[obs_index] = np.inf
                     ls.append(obs_index)
                 else:
                     obs = np.array(obstacles[obs_index, :2])
@@ -68,10 +71,16 @@ class RawSensorsView:
                     d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
                     self.__distance_from_obstacles[obs_index] = d
             
-            # remove inf form real obsticals        
-            for i in ls:
-                obstacles.pop(i)
+            # print("obstacles: 2", obstacles)
+            # print("distance: 2", self.__distance_from_obstacles)
+
+            # remove inf form real obsticals
+            if ls != []:
+                obstacles = np.delete(obstacles, ls, axis=0)
             
+            # print("obstacles: 3", obstacles)
+            # print("distance: 3", self.__distance_from_obstacles)
+
             # convert points into world coordinate system
             obstacles = transform_points(obstacles[:, :2], odometry.rotation)
             obstacles += odometry.position[:2].astype(int)
@@ -81,6 +90,18 @@ class RawSensorsView:
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
+
+            # compute the distance between the robot and each obstacles
+            for obs_index in range(len(obstacles)):
+                obs = np.array(obstacles[obs_index, :2])
+                pos = np.array(odometry.position)
+                d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
+                self.__distance_from_obstacles[obs_index] = d
+
+            # print("obstacles: 4", obstacles)
+            # print("distance: 4", self.__distance_from_obstacles)
+
+            # raise NotImplementedError()
 
 
     @property
