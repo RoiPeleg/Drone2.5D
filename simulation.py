@@ -62,9 +62,7 @@ def main():
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width * 2, world.height])
-    font = pygame.font.Font(pygame.font.get_default_font(), 24)
-    sensors_text_surface = font.render('Sensors', True, (255, 0, 0))
-    icp_text_surface = font.render('ICP', True, (255, 0, 0))
+    font = pygame.font.Font(pygame.font.get_default_font(), 18)
     
     # Robot movement configuration
     rotation_step = 10  # degrees
@@ -98,7 +96,6 @@ def main():
     slam_front_end.add_key_frame(sensor)
     
     # start simulation loop
-    simulation_mode = SimulationMode.RAW_SENSORS
     running = True
     t_clock.start()
     algo.run()
@@ -107,28 +104,6 @@ def main():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        simulation_mode = SimulationMode.RAW_SENSORS
-                    if event.key == pygame.K_i:
-                        simulation_mode = SimulationMode.ICP_ADJUSTMENT
-                    if event.key == pygame.K_s:
-                        # we assume that we detect a loop so can try to optimize pose graph
-                        # loop_frame = slam_front_end.create_loop_closure(sensor)
-                        # slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                        break
-                    if event.key == pygame.K_g:
-                        # we assume that we detect a loop so can try to optimize pose graph
-                        # loop_frame = slam_front_end.create_loop_closure(sensor)
-                        # gtsam_slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                        break
-                    if event.key == pygame.K_KP_PLUS:
-                        moving_step += 1
-                        robot.c_speed(1)
-                    if event.key == pygame.K_KP_MINUS:
-                        moving_step -= 1
-                        robot.c_speed(-1)
 
                     if event.key == pygame.K_LEFT:
                         robot.rotate(rotation_step)
@@ -142,24 +117,44 @@ def main():
             world.draw(screen)
             robot.draw(screen, world.height, world.width)
             
-            if simulation_mode == SimulationMode.RAW_SENSORS:
-                sensors_view.draw(screen, offset=world.width)
-                screen.blit(sensors_text_surface, dest=(15, 15))
-            if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
-                slam_front_end.draw(screen, offset=world.width)
-                screen.blit(icp_text_surface, dest=(30, 15))
+            sensors_view.draw(screen, offset=world.width)
             
-            opticalflow_text_surface = font.render(f'optical: {sensors_view.opticalflow}', True, (255, 0, 0))
-            screen.blit(opticalflow_text_surface, dest=(500, 570))
+            data_sensors = controller.sensors_data()
             
-            barometer_text_surface = font.render(f'z: {round(sensors_view.drone_height, 2)}', True, (255, 0, 0))
-            screen.blit(barometer_text_surface, dest=(400, 570))
+            text_surface = font.render(f'Battery: {data_sensors["battary"]}%', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(550, 15))
             
-            battery_text_surface = font.render(f'Battery: {round(clock.current_time_to_live/clock.maximum_time_to_live*100, 2)}%', True, (255, 0, 0))
-            screen.blit(battery_text_surface, dest=(550, 15))
+            text_surface = font.render(f'pitch: {data_sensors["pitch"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(570, 570))
+
+            text_surface = font.render(f'yaw: {data_sensors["yaw"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(570, 600))
+
+            text_surface = font.render(f'left: {data_sensors["d_left"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(700, 570))
+
+            text_surface = font.render(f'right: {data_sensors["d_right"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(700, 600))
+
+            text_surface = font.render(f'front: {data_sensors["d_front"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(815, 570))
+
+            text_surface = font.render(f'back: {data_sensors["d_back"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(815, 600))
+
+            text_surface = font.render(f'up: {data_sensors["d_up"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(930, 570))
+
+            text_surface = font.render(f'down: {data_sensors["d_down"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(930, 600))
+        
+
+            text_surface = font.render(f'optical: [{data_sensors["v_x"]}, {data_sensors["v_y"]}]', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(1100, 575))
             
-            gyro_text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
-            screen.blit(gyro_text_surface, dest=(900, 570))
+            text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(1100, 600))
+            
             
             pygame.display.flip()
 

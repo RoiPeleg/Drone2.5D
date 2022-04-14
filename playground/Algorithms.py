@@ -15,14 +15,14 @@ class Algorithms:
     def run(self):
         self.__auto = True
         if self.__mode == "random":
-            self.t_id = threading.Thread(target=self.random_walk, args=())
+            self.__t_id = threading.Thread(target=self.random_walk, args=())
         if self.__mode == "bat":
-            self.t_id = threading.Thread(target=self.BAT, args=())
-        self.t_id.start()
+            self.__t_id = threading.Thread(target=self.BAT, args=())
+        self.__t_id.start()
 
     def stop(self):
         self.__auto = False
-        self.t_id.join()
+        self.__t_id.join()
     
     def random_walk(self):
         self.__controller.takeoff()
@@ -30,7 +30,10 @@ class Algorithms:
             self.__controller.yaw(random.choice([-1,1]))
             
             self.__controller.pitch(random.choice([-1,1]))
-            time.sleep(0.8)
+
+            self.__controller.roll(random.choice([-1,1]))
+
+            time.sleep(0.5)
 
             # self.__controller.sensors_data()
  
@@ -39,7 +42,8 @@ class Algorithms:
     def Emengercy(self):
         self.RotateCW()
         self.Fly_Forward()
-        pass
+
+        self.__controller.reset_movement()
 
     def Tunnel(self, right, left):
         # epsilon = 0.1
@@ -52,12 +56,18 @@ class Algorithms:
     def Fly_Forward(self):
         self.__controller.pitch(1)
 
+        self.__controller.reset_movement()
+
     def RotateCCW(self):
         self.__controller.yaw(-1)
 
+        self.__controller.reset_movement()
+
     def RotateCW(self):
-        for _ in range(0,9):
+        for _ in range(0,10):
             self.__controller.yaw(1)
+        
+        self.__controller.reset_movement()
 
     def BAT(self):
         emengercy_tresh = 0.3
@@ -88,8 +98,8 @@ class Algorithms:
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
             # print("front: ", front, "right: ", right, "left: ", left)
-            print(data)
+            # print(data)
 
-            time.sleep(1)
+            # time.sleep(1)
 
         self.__controller.land()

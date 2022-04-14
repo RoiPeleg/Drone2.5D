@@ -18,7 +18,8 @@ class Lidar:
         self.__obstacles = None
 
         # generate scan arc coordinates
-        theta = np.array([0* np.pi, 0.5* np.pi, 1* np.pi, 1.5* np.pi])
+        num_scan_points = 4
+        theta = np.linspace(0, 1.5 * np.pi, num_scan_points)
         x = np.cos(theta)
         y = np.sin(theta)
         self.__circle_coords = np.stack([x, y], axis=1)
@@ -38,9 +39,7 @@ class Lidar:
             scan_angle = np.degrees(scan_angle)
 
             end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
-
             start_pos = start_pos.astype(int)
-
             ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
             added_obs = False
             for pos in zip(ys, xs):
@@ -52,7 +51,7 @@ class Lidar:
                     break
             
             if not added_obs:
-                obstacles_coords.append([-1, -1])
+                obstacles_coords.append([np.nan , np.nan])
                 obstacles_ids.append(-1)
 
 
