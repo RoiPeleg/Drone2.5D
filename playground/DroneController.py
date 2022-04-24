@@ -76,8 +76,8 @@ class DroneController:
         if new_speed_x < 0:
             new_speed_x = 0
 
-        print("pitch: ", self.__pitch)
-        print("new_speed_x: ", new_speed_x)
+        # print("pitch: ", self.__pitch)
+        # print("new_speed_x: ", new_speed_x)
 
         self.__speed_x = new_speed_x
         
@@ -120,10 +120,10 @@ class DroneController:
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
         
         data = {
-            "d_left": round(ds[1], 2),
-            "d_right": round(ds[3], 2),
-            "d_front": round(ds[0], 2),
-            "d_back": round(ds[2], 2),
+            "d_left": round(ds[2], 2),
+            "d_right": round(ds[0], 2),
+            "d_front": round(ds[1], 2),
+            "d_back": round(ds[3], 2),
             "d_down": round(self.__sensor_view.drone_height, 2),
             "d_up": round(self.__sensor_view.dis_from_roof, 2),
 

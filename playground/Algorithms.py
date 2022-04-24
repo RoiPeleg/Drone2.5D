@@ -84,6 +84,8 @@ class Algorithms:
             right = np.inf
         self.__controller.takeoff()
         while self.__auto:
+            # time.sleep(1)
+
             if front < emengercy_tresh:
                 self.Emengercy()
             elif front < front_tresh:
@@ -97,9 +99,5 @@ class Algorithms:
 
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
-            # print("front: ", front, "right: ", right, "left: ", left)
-            # print(data)
-
-            # time.sleep(1)
 
         self.__controller.land()

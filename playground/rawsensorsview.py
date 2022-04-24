@@ -26,6 +26,7 @@ class RawSensorsView:
     
     # measures barometer
     def take_measurements_barometer(self, odometry):
+        odometry.track_altitude(1)
         self.__drone_height = odometry.altitude
         self.__dis_from_roof = self.__z - self.__drone_height
 

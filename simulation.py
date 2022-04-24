@@ -105,6 +105,7 @@ def main():
                 if event.type == pygame.QUIT:
                     running = False
 
+                if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_LEFT:
                         robot.rotate(rotation_step)
                     if event.key == pygame.K_RIGHT:
@@ -163,7 +164,7 @@ def main():
             running = False
     
     controller.stop()
-    algo.stop()
+    # algo.stop()
     pygame.quit()
     t_clock.join(0.1)
     exit()

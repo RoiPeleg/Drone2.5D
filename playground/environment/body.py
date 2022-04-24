@@ -25,12 +25,6 @@ class Body:
         new_pos += direction * dist
         return new_pos
 
-    def try_move_2(self, dist):
-        direction = make_direction(self.__rotation_matrix) * 90
-        new_pos = self.__pos.copy()
-        new_pos += direction * dist
-        return new_pos
-
     def set_altitude(self, alt):
         self.__altitude = alt
 
