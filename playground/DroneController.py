@@ -30,8 +30,10 @@ class DroneController:
         self.__running = True
 
     def move(self):
+        delta_t = 0.1
         while self.__running:
-            self.__robot.move(self.__speed_x)
+            x = self.__speed_x * delta_t + 0.5 * self.__acceleration_x * delta_t**2
+            self.__robot.move(x)
             # speed decay
             if self.__speed_x > 0:
                 self.__speed_x -= self.__acceleration_x

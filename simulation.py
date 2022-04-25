@@ -41,13 +41,15 @@ class Clock:
 def main():
     pygame.init()
     pygame.display.set_caption('SLAM playground')
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', help='Environmental map filename')
-    args = parser.parse_args()
+    filename = "assets/p11.png"
+
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('filename', help='Environmental map filename')
+    # args = parser.parse_args()
 
     # Create simulation objects
 
-    world = World(args.filename, max_z= 3)
+    world = World(filename, max_z= 3)
     odometry = Odometry(mu=0, sigma=1)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
     robot = Robot(odometry, sensor, world)
@@ -56,7 +58,7 @@ def main():
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
     controller = DroneController(robot, sensors_view)
-    algo = Algorithms(controller, mode="bat")
+    algo = Algorithms(controller, mode="random")
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     
@@ -164,7 +166,7 @@ def main():
             running = False
     
     controller.stop()
-    # algo.stop()
+    algo.stop()
     pygame.quit()
     t_clock.join(0.1)
     exit()
