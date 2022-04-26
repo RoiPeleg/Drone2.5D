@@ -14,18 +14,20 @@ class Algorithms:
 
     def run(self):
         self.__auto = True
-        self.__careful_id = threading.Thread(target=self.careful_walk, args=())
+        # self.__careful_id = threading.Thread(target=self.careful_walk, args=())
         if self.__mode == "random":
             self.__t_id = threading.Thread(target=self.random_walk, args=())
+        if self.__mode == "careful":
+            self.__t_id = threading.Thread(target=self.careful_walk, args=())
         if self.__mode == "bat":
             self.__t_id = threading.Thread(target=self.BAT, args=())
         self.__t_id.start()
-        self.__careful_id.start()
+        # self.__careful_id.start()
 
     def stop(self):
         self.__auto = False
         self.__t_id.join()
-        self.__careful_id.join()
+        # self.__careful_id.join()
     
     def random_walk(self):
         self.__controller.takeoff()
@@ -39,19 +41,31 @@ class Algorithms:
         self.__controller.land()
 
     def careful_walk(self):
-        t = 0.1
-        pid = self.PID(2, 0.1, 2)        # create pid control
-        pid.send(None)
-
-        while self.__auto:
+        SP = 1
+        # Get the drone to the right position
+        self.__controller.takeoff()
+        data = self.__controller.sensors_data()
+        while data["d_front"] > SP and self.__auto:
+            self.Fly_Forward()
             data = self.__controller.sensors_data()
-            SP = 5           # get setpoint
-            PV = data["d_right"]               # get measurement
-            print("PV: ", PV)
+            print(data["d_front"])
+        self.RotateCW()
 
-            MV = pid.send([t, PV, SP])   # compute manipulated variable
-            # apply
-            print("MV: ", MV)
+        # t = 0.1
+        # pid = self.PID(1, 0.1, 1)        # create pid control
+        # pid.send(None)
+
+        # while self.__auto:
+        #     data = self.__controller.sensors_data()
+        #                # get setpoint
+        #     PV = data["d_right"]               # get measurement
+        #     print("PV: ", PV)
+
+        #     MV = pid.send([t, PV, SP])   # compute manipulated variable
+        #     # apply
+        #     print("MV: ", MV)
+        #     time.sleep(t)
+        self.__controller.land()
 
     def PID(self, Kp, Ki, Kd, MV_bar=0):
         # initialize stored data
@@ -69,9 +83,9 @@ class Algorithms:
             # PID calculations
             e = SP - PV
             
-            print("in pid: SP: ", SP)
-            print("in pid: PV: ", PV)
-            print("in pid: e: ", e)
+            # print("in pid: SP: ", SP)
+            # print("in pid: PV: ", PV)
+            # print("in pid: e: ", e)
 
             P = Kp*e
             I = I + Ki*e*(t - t_prev)
@@ -128,7 +142,6 @@ class Algorithms:
             right = np.inf
         self.__controller.takeoff()
         while self.__auto:
-            # time.sleep(1)
 
             if front < emengercy_tresh:
                 self.Emengercy()

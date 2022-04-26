@@ -27,13 +27,15 @@ class DroneController:
         self.__yaw = 0
 
         self.t_move = threading.Thread(target=self.move, args=())
-        self.__running = True
+        self.__running = False
 
     def move(self):
         delta_t = 0.1
         while self.__running:
-            x = self.__speed_x * delta_t + 0.5 * self.__acceleration_x * delta_t**2
-            self.__robot.move(x)
+            if self.__speed_x != 0:
+                x = self.__speed_x * delta_t + 0.5 * self.__acceleration_x * delta_t**2
+                self.__robot.move(x)
+           
             # speed decay
             if self.__speed_x > 0:
                 self.__speed_x -= self.__acceleration_x
@@ -72,16 +74,15 @@ class DroneController:
 
         new_speed_x = self.__speed_x + sign * self.__acceleration_x
         new_speed_x =  round((math.sin(math.radians(self.__pitch)) * new_speed_x))
-
+        
         if new_speed_x > self.__max_speed:
             new_speed_x = self.__max_speed
         if new_speed_x < 0:
             new_speed_x = 0
 
-        # print("pitch: ", self.__pitch)
-        # print("new_speed_x: ", new_speed_x)
-
         self.__speed_x = new_speed_x
+
+        # print("self.__speed_x: ", self.__speed_x)
         
 
     def roll(self, sign):
@@ -105,6 +106,7 @@ class DroneController:
 
     def takeoff(self):
         time.sleep(1)
+        self.__running = True
         self.__robot.set_altitude(1)
         self.t_move.start()
       
@@ -112,6 +114,7 @@ class DroneController:
     def land(self):
         time.sleep(1)
         self.__robot.set_altitude(0)
+        self.stop()
 
     def battery_level(self):
         return self.__sensor_view.battery
@@ -122,10 +125,10 @@ class DroneController:
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
         
         data = {
-            "d_left": round(ds[2], 2),
-            "d_right": round(ds[0], 2),
-            "d_front": round(ds[1], 2),
-            "d_back": round(ds[3], 2),
+            "d_left": round(ds[3], 2),
+            "d_right": round(ds[1], 2),
+            "d_front": round(ds[0], 2),
+            "d_back": round(ds[2], 2),
             "d_down": round(self.__sensor_view.drone_height, 2),
             "d_up": round(self.__sensor_view.dis_from_roof, 2),
 

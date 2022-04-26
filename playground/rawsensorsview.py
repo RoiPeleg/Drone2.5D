@@ -61,7 +61,7 @@ class RawSensorsView:
             # print("obstacles: 1", obstacles)
             # print("distance: 1", self.__distance_from_obstacles)
 
-            # calculates ditances from all 4 lidars inf if htere is no obstacle
+            # compute the distance between the robot and each obstacles
             for obs_index in range(len(obstacles)):
                 if obstacles[obs_index][-1] == -1: #if obstacle not found
                     self.__distance_from_obstacles[obs_index] = np.inf
@@ -91,19 +91,6 @@ class RawSensorsView:
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
-
-            # compute the distance between the robot and each obstacles
-            for obs_index in range(len(obstacles)):
-                obs = np.array(obstacles[obs_index, :2])
-                pos = np.array(odometry.position)
-                d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
-                self.__distance_from_obstacles[obs_index] = d
-
-            # print("obstacles: 4", obstacles)
-            # print("distance: 4", self.__distance_from_obstacles)
-
-            # raise NotImplementedError()
-
 
     @property
     def distance_from_obstacles(self):

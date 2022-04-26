@@ -55,21 +55,18 @@ class Lidar:
                 obstacles_ids.append(-1)
 
 
-        if len(obstacles_coords) > 0:
-            obstacles_coords = np.array(obstacles_coords)
-            obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
-            
-            # Transform obstacles into the sensor/robot coordinate system
-            obstacles_coords -= start_pos
-            obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
+        obstacles_coords = np.array(obstacles_coords)
+        obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
+        
+        # Transform obstacles into the sensor/robot coordinate system
+        obstacles_coords -= start_pos
+        obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
 
-            # Adding noise
-            noise = np.random.normal(self.__mu, self.__sigma, size=obstacles_coords.shape)
-            obstacles_coords += noise.astype(int)
+        # Adding noise
+        noise = np.random.normal(self.__mu, self.__sigma, size=obstacles_coords.shape)
+        obstacles_coords += noise.astype(int)
 
-            self.__obstacles = np.hstack([obstacles_coords, obstacles_ids])
-        else:
-            self.__obstacles = None
+        self.__obstacles = np.hstack([obstacles_coords, obstacles_ids])
 
     def draw(self, screen, h, w, position, direction):
         color = (128, 128, 128)

@@ -58,7 +58,7 @@ def main():
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
     controller = DroneController(robot, sensors_view)
-    algo = Algorithms(controller, mode="random")
+    algo = Algorithms(controller, mode="careful")
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     
@@ -93,9 +93,7 @@ def main():
 
     t_clock = threading.Thread(target=clock_fun, args=())
 
-    robot.move(200)
-    sensors_view.take_measurements(odometry, sensor)
-    slam_front_end.add_key_frame(sensor)
+    robot.move(80)
     
     # start simulation loop
     running = True
