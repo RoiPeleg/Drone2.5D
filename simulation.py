@@ -74,6 +74,7 @@ def main():
     def clock_fun():
         while threading.main_thread().isAlive():
             # lidar sensor:
+            sensor.scan(robot.position, robot.rotation, world)
             sensors_view.take_measurements(odometry, sensor)
             slam_front_end.add_key_frame(sensor)
             robot.sensor.scan(robot.position, robot.rotation, world)

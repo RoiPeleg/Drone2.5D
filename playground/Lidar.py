@@ -6,8 +6,7 @@ import pygame
 import numpy as np
 from skimage.draw import line_aa
 
-from playground.utils.transform import to_screen_coords, make_direction, transform_points
-
+from playground.utils.transform import to_screen_coords, make_direction, transform_points, create_rotation_matrix_yx
 
 class Lidar:
     def __init__(self, dist_range, fov, mu, sigma):
@@ -18,11 +17,7 @@ class Lidar:
         self.__obstacles = None
 
         # generate scan arc coordinates
-        num_scan_points = 4
-        theta = np.linspace(0, 1.5 * np.pi, num_scan_points)
-        x = np.cos(theta)
-        y = np.sin(theta)
-        self.__circle_coords = np.stack([x, y], axis=1)
+        self.__thetas = np.array([0, np.pi/2, np.pi, 1.5 * np.pi])
 
     def get_obstacles(self):
         return self.__obstacles
@@ -33,12 +28,14 @@ class Lidar:
         obstacles_ids = []
         start_pos = position
         direction = make_direction(rotation)
-        for circle_dir in self.__circle_coords:
-            dot_product = np.dot(direction, circle_dir)
-            scan_angle = math.acos(np.clip(dot_product, -1., 1))
-            scan_angle = np.degrees(scan_angle)
+        angle = math.acos((np.trace(rotation)-1)/2)
+        
+        for theta in self.__thetas:
+            scan_angle = np.degrees(theta + angle) % 360
+            scan_angle = create_rotation_matrix_yx(scan_angle)
+            direction = make_direction(scan_angle)
 
-            end_pos = (start_pos + circle_dir * self.__dist_range).astype(int)
+            end_pos = (start_pos + direction * self.__dist_range).astype(int)
             start_pos = start_pos.astype(int)
             ys, xs, _ = line_aa(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
             added_obs = False
@@ -54,28 +51,16 @@ class Lidar:
                 obstacles_coords.append((np.nan , np.nan))
                 obstacles_ids.append(-1)
 
-        print("obstacles_ids 0: ", obstacles_ids)
-        print("obstacles_coords 0: ", obstacles_coords)
-
         obstacles_coords = np.array(obstacles_coords)
         obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
         
-        print("obstacles_ids 1: ", obstacles_ids)
-        print("obstacles_coords 1: ", obstacles_coords)
-
         # Transform obstacles into the sensor/robot coordinate system
         obstacles_coords -= start_pos
         obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
 
-        print("obstacles_ids 2: ", obstacles_ids)
-        print("obstacles_coords 2: ", obstacles_coords)
-
         # Adding noise
         noise = np.random.normal(self.__mu, self.__sigma, size=obstacles_coords.shape)
         obstacles_coords += noise.astype(int)
-
-        print("obstacles_ids 3: ", obstacles_ids)
-        print("obstacles_coords 3: ", obstacles_coords)
 
         self.__obstacles = np.hstack([obstacles_coords, obstacles_ids])
 

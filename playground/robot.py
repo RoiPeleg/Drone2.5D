@@ -15,13 +15,11 @@ class Robot(Body):
     def rotate(self, angle):
         super().rotate(angle)
         self.__odomentry.track_rotate(angle)
-        self.__sensor.scan(self.position, self.rotation, self.__world)
 
     def move(self, dist):
         if self.__world.allow_move(self.try_move(dist), self.size):
             super().move(dist)
             self.__odomentry.track_move(dist)
-            # self.__sensor.scan(self.position, self.rotation, self.__world)
 
     def set_altitude(self, new_alt):
         super().set_altitude(new_alt)

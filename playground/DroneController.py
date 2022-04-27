@@ -125,8 +125,8 @@ class DroneController:
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
         
         data = {
-            "d_left": round(ds[3], 2),
-            "d_right": round(ds[1], 2),
+            "d_left": round(ds[1], 2),
+            "d_right": round(ds[3], 2),
             "d_front": round(ds[0], 2),
             "d_back": round(ds[2], 2),
             "d_down": round(self.__sensor_view.drone_height, 2),
