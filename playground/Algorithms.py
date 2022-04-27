@@ -44,12 +44,12 @@ class Algorithms:
         SP = 1
         # Get the drone to the right position
         self.__controller.takeoff()
-        data = self.__controller.sensors_data()
-        while data["d_front"] > SP and self.__auto:
-            self.Fly_Forward()
-            data = self.__controller.sensors_data()
-            print(data["d_front"])
-        self.RotateCW()
+        # data = self.__controller.sensors_data()
+        # while data["d_front"] > SP and self.__auto:
+        #     self.Fly_Forward()
+        #     data = self.__controller.sensors_data()
+        #     # print(data["d_front"])
+        # self.RotateCW()
 
         # t = 0.1
         # pid = self.PID(1, 0.1, 1)        # create pid control
@@ -65,7 +65,7 @@ class Algorithms:
         #     # apply
         #     print("MV: ", MV)
         #     time.sleep(t)
-        self.__controller.land()
+        # self.__controller.land()
 
     def PID(self, Kp, Ki, Kd, MV_bar=0):
         # initialize stored data

@@ -51,20 +51,31 @@ class Lidar:
                     break
             
             if not added_obs:
-                obstacles_coords.append([np.nan , np.nan])
+                obstacles_coords.append((np.nan , np.nan))
                 obstacles_ids.append(-1)
 
+        print("obstacles_ids 0: ", obstacles_ids)
+        print("obstacles_coords 0: ", obstacles_coords)
 
         obstacles_coords = np.array(obstacles_coords)
         obstacles_ids = np.array(obstacles_ids).reshape((-1, 1))
         
+        print("obstacles_ids 1: ", obstacles_ids)
+        print("obstacles_coords 1: ", obstacles_coords)
+
         # Transform obstacles into the sensor/robot coordinate system
         obstacles_coords -= start_pos
         obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
 
+        print("obstacles_ids 2: ", obstacles_ids)
+        print("obstacles_coords 2: ", obstacles_coords)
+
         # Adding noise
         noise = np.random.normal(self.__mu, self.__sigma, size=obstacles_coords.shape)
         obstacles_coords += noise.astype(int)
+
+        print("obstacles_ids 3: ", obstacles_ids)
+        print("obstacles_coords 3: ", obstacles_coords)
 
         self.__obstacles = np.hstack([obstacles_coords, obstacles_ids])
 

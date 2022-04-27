@@ -58,8 +58,8 @@ class RawSensorsView:
             self.__distance_from_obstacles = np.empty(4)
             ls = []
 
-            # print("obstacles: 1", obstacles)
-            # print("distance: 1", self.__distance_from_obstacles)
+            print("obstacles: 1", obstacles)
+            print("distance: 1", self.__distance_from_obstacles)
 
             # compute the distance between the robot and each obstacles
             for obs_index in range(len(obstacles)):
@@ -72,15 +72,15 @@ class RawSensorsView:
                     d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
                     self.__distance_from_obstacles[obs_index] = d
             
-            # print("obstacles: 2", obstacles)
-            # print("distance: 2", self.__distance_from_obstacles)
+            print("obstacles: 2", obstacles)
+            print("distance: 2", self.__distance_from_obstacles)
 
             # remove inf form real obsticals
             if ls != []:
                 obstacles = np.delete(obstacles, ls, axis=0)
             
-            # print("obstacles: 3", obstacles)
-            # print("distance: 3", self.__distance_from_obstacles)
+            print("obstacles: 3", obstacles)
+            print("distance: 3", self.__distance_from_obstacles)
 
             # convert points into world coordinate system
             obstacles = transform_points(obstacles[:, :2], odometry.rotation)
