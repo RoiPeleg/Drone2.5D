@@ -69,7 +69,7 @@ class RawSensorsView:
                 else:
                     obs = np.array(obstacles[obs_index, :2])
                     pos = np.array(odometry.position)
-                    d = np.sqrt((pos[0] - obs[0])**2 + (pos[1] - obs[1])**2 )
+                    d = np.sqrt((obs[0])**2 + (obs[1])**2 )
                     self.__distance_from_obstacles[obs_index] = d
             
             print("obstacles: 2", obstacles)
