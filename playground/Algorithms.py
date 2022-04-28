@@ -8,26 +8,24 @@ class Algorithms:
         self.__mode = mode
         self.__auto = False
         self.__t_id = None
-        self.__careful_id = None
         self.__controller = controller
+        self.last_error = 0
+        self.intgral = 0
+        self.pitch_Kp = 15
+        self.pitch_Ki = 0.04
+        self.pitch_Kd = 4
         
-
     def run(self):
         self.__auto = True
-        # self.__careful_id = threading.Thread(target=self.careful_walk, args=())
         if self.__mode == "random":
             self.__t_id = threading.Thread(target=self.random_walk, args=())
-        if self.__mode == "careful":
-            self.__t_id = threading.Thread(target=self.careful_walk, args=())
         if self.__mode == "bat":
             self.__t_id = threading.Thread(target=self.BAT, args=())
         self.__t_id.start()
-        # self.__careful_id.start()
 
     def stop(self):
         self.__auto = False
         self.__t_id.join()
-        # self.__careful_id.join()
     
     def random_walk(self):
         self.__controller.takeoff()
@@ -40,92 +38,54 @@ class Algorithms:
  
         self.__controller.land()
 
-    def careful_walk(self):
-        SP = 1
-        # Get the drone to the right position
-        self.__controller.takeoff()
-        # data = self.__controller.sensors_data()
-        # while data["d_front"] > SP and self.__auto:
-        #     self.Fly_Forward()
-        #     data = self.__controller.sensors_data()
-        #     # print(data["d_front"])
-        # self.RotateCW()
-
-        # t = 0.1
-        # pid = self.PID(1, 0.1, 1)        # create pid control
-        # pid.send(None)
-
-        # while self.__auto:
-        #     data = self.__controller.sensors_data()
-        #                # get setpoint
-        #     PV = data["d_right"]               # get measurement
-        #     print("PV: ", PV)
-
-        #     MV = pid.send([t, PV, SP])   # compute manipulated variable
-        #     # apply
-        #     print("MV: ", MV)
-        #     time.sleep(t)
-        # self.__controller.land()
-
-    def PID(self, Kp, Ki, Kd, MV_bar=0):
-        # initialize stored data
-        e_prev = 0
-        t_prev = 0
-        I = 0
-        
-        # initial control
-        MV = MV_bar
-        
-        while True:
-            # yield MV, wait for new t, PV, SP
-            t, PV, SP = yield MV
-            
-            # PID calculations
-            e = SP - PV
-            
-            # print("in pid: SP: ", SP)
-            # print("in pid: PV: ", PV)
-            # print("in pid: e: ", e)
-
-            P = Kp*e
-            I = I + Ki*e*(t - t_prev)
-            D = Kd*(e - e_prev)/(t - t_prev)
-            
-            MV = MV_bar + P + I + D
-            
-            # update stored data for next iteration
-            e_prev = e
-            t_prev = t + t
-
     def Emengercy(self):
         self.RotateCW()
         self.Fly_Forward()
-
-        self.__controller.reset_movement()
+        
 
     def Tunnel(self, right, left):
-        # epsilon = 0.1
-        # while abs(right - left) < epsilon:
-        #     self.Fly_Forward()
-        #     data = self.__controller.sensors_data()
-        #     front, right, leff = data["d_front"], data["d_right"], data["d_left"]
-        pass
+        print("The drone enter to a tunnel")
+        epsilon = 0.1
+        counter = 0
+        if abs(right - left) < epsilon:
+            if right < left:
+                self.__controller.roll(1)
+                counter += 1
+            elif left < right:
+                self.___controller.roll(-1)
+                counter -= 1
+            data = self.__controller.sensors_data()
+            
+            right, left = data["d_right"], data["d_left"]
+        
+        # if counter != 0:
+        #     if counter < 0:
+        #         self.___controller.yaw(1)
+        #     elif counter > 0:
+        #         self.___controller.yaw(-1)
+        
 
     def Fly_Forward(self):
-        self.__controller.pitch(1)
+        delta_t = 0.01
+        data = self.__controller.sensors_data()
+        error = data['d_front'] - 0.25
 
-        self.__controller.reset_movement()
+        self.intgral = self.intgral + error * delta_t        
+        u_t = self.pitch_Kp * error + self.pitch_Ki * self.intgral + self.pitch_Kd * (error - self.last_error) / delta_t
+        
+        pitch = self.__controller.sensors_data()['pitch']
+        if pitch < u_t :
+            self.__controller.pitch(1)
+        elif pitch > u_t :
+            self.__controller.pitch(-1)
+        self.last_error = error
 
     def RotateCCW(self):
-        self.__controller.yaw(-1)
-
-        self.__controller.reset_movement()
-
+        self.__controller.yaw(1)
+        
     def RotateCW(self):
         for _ in range(0,10):
-            self.__controller.yaw(1)
-        
-        self.__controller.reset_movement()
+            self.__controller.yaw(-1)
 
     def BAT(self):
         emengercy_tresh = 0.3
@@ -138,9 +98,13 @@ class Algorithms:
         left = -1 # distance of the left sensor of the drone
         data = self.__controller.sensors_data()
         front, right, leff = data["d_front"], data["d_right"], data["d_left"]
+        
         if np.isinf(right):
             right = np.inf
+
         self.__controller.takeoff()
+
+
         while self.__auto:
 
             if front < emengercy_tresh:
@@ -156,5 +120,6 @@ class Algorithms:
 
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
+            time.sleep(0.1)
 
         self.__controller.land()

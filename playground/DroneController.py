@@ -32,15 +32,47 @@ class DroneController:
     def move(self):
         delta_t = 0.1
         while self.__running:
-            if self.__speed_x != 0:
-                x = self.__speed_x * delta_t + 0.5 * self.__acceleration_x * delta_t**2
-                self.__robot.move(x)
-           
-            # speed decay
-            if self.__speed_x > 0:
-                self.__speed_x -= self.__acceleration_x
+            w_speed_x =   ((math.sin(math.radians(self.__pitch))) * (math.sin(math.radians(self.__max_rotate)))) * self.__max_speed
+            # print('pitch amount',((math.sin(math.radians(self.__pitch)) * (math.sin(math.radians(self.__max_rotate))))))
+            # print('desired speed',w_speed)
+
+            if self.__speed_x < round(w_speed_x):
+                self.__speed_x = round(self.__speed_x + self.__acceleration_x * delta_t)
+            elif self.__speed_x > round(w_speed_x):
+                self.__speed_x = round(self.__speed_x - self.__acceleration_x * delta_t)
+                
+            if self.__speed_x > self.__max_speed:
+                self.__speed_x = self.__max_speed
             if self.__speed_x < 0:
-                self.__speed_x += self.__acceleration_x
+                self.__speed_x = 0
+
+            w_speed_y = ((math.sin(math.radians(self.__roll))) * (math.sin(math.radians(self.__max_rotate)))) * self.__max_speed
+
+            if self.__speed_y < round(w_speed_y):
+                self.__speed_y = round(self.__speed_y + self.__acceleration_y * delta_t)
+            elif self.__speed_y > round(w_speed_y):
+                self.__speed_y = round(self.__speed_y - self.__acceleration_y * delta_t)
+
+            if self.__speed_y < 0:
+                self.__speed_y = 0
+            if self.__speed_y > self.__max_speed:
+                self.__speed_y = self.__max_speed
+            
+            speed = math.sqrt(self.__speed_x**2 + self.__speed_y**2)
+            
+            print("speed: ", speed)
+
+            x = speed * delta_t
+            self.__robot.move(x)
+            time.sleep(0.1)
+            
+            # speed decay
+            # if self.__speed_x > 0:
+            #     self.__speed_x -= self.__acceleration_x
+            #     self.__pitch -= self.__angle_inc
+            # if self.__speed_x < 0:
+            #     self.__speed_x += self.__acceleration_x
+            #     self.__pitch += self.__angle_inc
 
 
     def stop(self):
@@ -71,18 +103,6 @@ class DroneController:
             self.__pitch = self.__min_rotate
         if self.__pitch > self.__max_rotate:
             self.__pitch = self.__max_rotate
-
-        new_speed_x = self.__speed_x + sign * self.__acceleration_x
-        new_speed_x =  round((math.sin(math.radians(self.__pitch)) * new_speed_x))
-        
-        if new_speed_x > self.__max_speed:
-            new_speed_x = self.__max_speed
-        if new_speed_x < 0:
-            new_speed_x = 0
-
-        self.__speed_x = new_speed_x
-
-        # print("self.__speed_x: ", self.__speed_x)
         
 
     def roll(self, sign):
@@ -93,16 +113,6 @@ class DroneController:
             self.__roll = self.__min_rotate
         if self.__roll > self.__max_rotate:
             self.__roll = self.__max_rotate
-
-        new_speed_y = self.__speed_y + sign * self.__acceleration_y
-        new_speed_y =  round((math.cos(math.radians(self.__roll)) * new_speed_y))
-        
-        if new_speed_y < 0:
-            new_speed_y = 0
-        if new_speed_y > self.__max_speed:
-            new_speed_y = self.__max_speed
-            
-        self.__speed_y = new_speed_y
 
     def takeoff(self):
         time.sleep(1)

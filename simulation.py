@@ -58,7 +58,7 @@ def main():
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
     controller = DroneController(robot, sensors_view)
-    algo = Algorithms(controller, mode="careful")
+    algo = Algorithms(controller, mode="bat")
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     

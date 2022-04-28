@@ -48,7 +48,7 @@ class Lidar:
                     break
             
             if not added_obs:
-                obstacles_coords.append((np.nan , np.nan))
+                obstacles_coords.append((np.inf , np.inf))
                 obstacles_ids.append(-1)
 
         obstacles_coords = np.array(obstacles_coords)
