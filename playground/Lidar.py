@@ -28,10 +28,10 @@ class Lidar:
         obstacles_ids = []
         start_pos = position
         direction = make_direction(rotation)
-        angle = math.acos((np.trace(rotation)-1)/2)
-        
+        angle = np.arctan2(direction[1],direction[0])
+        angle = np.degrees(angle) * (-1)
         for theta in self.__thetas:
-            scan_angle = np.degrees(theta + angle) % 360
+            scan_angle = (np.degrees(theta) + angle) % 360
             scan_angle = create_rotation_matrix_yx(scan_angle)
             direction = make_direction(scan_angle)
 
