@@ -45,7 +45,7 @@ class Clock:
 def main():
     pygame.init()
     pygame.display.set_caption('SLAM playground')
-    filename = "assets/p11.png"
+    filename = "assets/p15.png"
 
     # parser = argparse.ArgumentParser()
     # parser.add_argument('filename', help='Environmental map filename')
@@ -54,9 +54,9 @@ def main():
     # Create simulation objects
 
     world = World(filename, max_z= 3)
-    odometry = Odometry(mu=0, sigma=1)  # noised measurements
+    odometry = Odometry(filename, mu=0, sigma=1)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
-    robot = Robot(odometry, sensor, world)
+    robot = Robot(odometry, sensor, world, filename)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
@@ -97,8 +97,6 @@ def main():
             time.sleep(0.1)
 
     t_clock = threading.Thread(target=clock_fun, args=())
-
-    robot.move(80)
     
     # start simulation loop
     running = True
@@ -127,11 +125,14 @@ def main():
             
             data_sensors = controller.sensors_data()
             
-            text_surface = font.render(f'Battery: {data_sensors["battary"]}%', True, (255, 0, 0))
+            text_surface = font.render(f'Battery: {data_sensors["battery"]}%', True, (255, 0, 0))
             screen.blit(text_surface, dest=(550, 15))
             
             text_surface = font.render(f'pitch: {data_sensors["pitch"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(570, 570))
+
+            text_surface = font.render(f'roll: {data_sensors["roll"]}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(500, 570))
 
             text_surface = font.render(f'yaw: {data_sensors["yaw"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(570, 600))

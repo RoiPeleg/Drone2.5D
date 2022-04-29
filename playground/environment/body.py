@@ -7,8 +7,13 @@ class Body:
         Physical environment simulation element
     """
 
-    def __init__(self):
+    def __init__(self, filename):
         self.__pos = np.zeros(2)
+        self.start_drone_positions = {"assets/p15.png": np.array([-120.0, 620.0])
+
+        }
+        self.__pos = self.start_drone_positions[filename]
+
         self.__altitude = 0
         self.__rotation_matrix = np.identity(3)
 

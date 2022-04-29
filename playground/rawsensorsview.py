@@ -17,7 +17,7 @@ class RawSensorsView:
         self.__battery = 100
 
         self.__drone_height = 0
-        self.__dis_from_roof = 0
+        self.__dis_from_roof = self.__z
 
         self.__distance_from_obstacles = np.empty(4)
 
@@ -26,7 +26,8 @@ class RawSensorsView:
     
     # measures barometer
     def take_measurements_barometer(self, odometry):
-        odometry.track_altitude(1)
+        if odometry.altitude != 0:
+            odometry.track_altitude(1)
         self.__drone_height = odometry.altitude
         self.__dis_from_roof = self.__z - self.__drone_height
 
@@ -72,6 +73,10 @@ class RawSensorsView:
             # remove inf form real obsticals
             if ls != []:
                 obstacles = np.delete(obstacles, ls, axis=0)
+
+            if 0 in self.__distance_from_obstacles:
+                print("distance: ", self.__distance_from_obstacles)
+                print("obstacles: ", obstacles)
 
             # convert points into world coordinate system
             obstacles = transform_points(obstacles[:, :2], odometry.rotation)

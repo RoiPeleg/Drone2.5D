@@ -60,7 +60,7 @@ class DroneController:
             
             speed = math.sqrt(self.__speed_x**2 + self.__speed_y**2)
             
-            # print("speed: ", speed)
+            print("speed: ", speed)
 
             x = speed * delta_t
             self.__robot.move(x)
@@ -145,7 +145,7 @@ class DroneController:
             "v_x": round(self.__sensor_view.opticalflow[0], 2),
             "v_y": round(self.__sensor_view.opticalflow[1], 2),
 
-            "battary": self.__sensor_view.battery,
+            "battery": self.__sensor_view.battery,
 
             "pitch": self.__pitch,
             "roll": self.__roll,

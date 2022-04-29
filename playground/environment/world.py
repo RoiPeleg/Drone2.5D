@@ -49,7 +49,7 @@ class World:
         surf = pygame.surfarray.make_surface(transposed_map)
         #surf = pygame.transform.scale(surf, (self.width, self.height)) 
         screen.blit(surf, (0, 0))
-        pygame.draw.circle(screen, color=(255, 0, 0), center=(self.__width // 2, self.__height // 2), radius=10)
+        # pygame.draw.circle(screen, color=(255, 0, 0), center=(self.__width // 2, self.__height // 2), radius=10)
 
     def allow_move(self, pos, size):
         obstacles_coords = self.get_obstacles_in_circle(pos, size)

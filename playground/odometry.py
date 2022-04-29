@@ -4,8 +4,8 @@ from playground.environment.body import Body
 
 
 class Odometry(Body):
-    def __init__(self, mu, sigma):
-        super().__init__()
+    def __init__(self, filename, mu, sigma):
+        super().__init__(filename)
         self.__mu = mu
         self.__sigma = sigma
         self.__angle = 0
