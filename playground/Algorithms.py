@@ -45,7 +45,7 @@ class Algorithms:
 
     def Tunnel(self, right, left):
         print("The drone enter to a tunnel")
-        epsilon = 0.1
+        epsilon = 25
         counter = 0
         if abs(right - left) < epsilon:
             if right < left:
@@ -69,7 +69,9 @@ class Algorithms:
         delta_t = 0.01
         data = self.__controller.sensors_data()
         error = data['d_front'] - 0.25
-
+        if error == np.inf:
+            # if front is inf the pid controller get crazy
+            error = 3 - 0.25
         self.intgral = self.intgral + error * delta_t        
         u_t = self.pitch_Kp * error + self.pitch_Ki * self.intgral + self.pitch_Kd * (error - self.last_error) / delta_t
         
@@ -97,7 +99,7 @@ class Algorithms:
         right = -1 # distance of the right sensor of the drone
         left = -1 # distance of the left sensor of the drone
         data = self.__controller.sensors_data()
-        front, right, leff = data["d_front"], data["d_right"], data["d_left"]
+        front, right, left = data["d_front"], data["d_right"], data["d_left"]
         
         if np.isinf(right):
             right = np.inf

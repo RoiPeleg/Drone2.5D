@@ -58,6 +58,11 @@ class Lidar:
         obstacles_coords -= start_pos
         obstacles_coords = transform_points(obstacles_coords, np.linalg.inv(rotation))
 
+        for obs in obstacles_coords:
+            if obs[0] == 0 and obs[1] == 0:
+                print("obstacle: ", obstacles_coords)
+                break
+
         # Adding noise
         noise = np.random.normal(self.__mu, self.__sigma, size=obstacles_coords.shape)
         obstacles_coords += noise.astype(int)

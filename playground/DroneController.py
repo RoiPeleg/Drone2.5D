@@ -60,7 +60,7 @@ class DroneController:
             
             speed = math.sqrt(self.__speed_x**2 + self.__speed_y**2)
             
-            print("speed: ", speed)
+            # print("speed: ", speed)
 
             x = speed * delta_t
             self.__robot.move(x)

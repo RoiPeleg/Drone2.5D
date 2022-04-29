@@ -4,6 +4,10 @@ import argparse
 from enum import Enum
 import threading
 
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+warnings.filterwarnings(action='ignore', message='invalid value encountered in double_scalars')
+
 import playground.slam.frontend
 # import playground.slam.backend
 # import playground.slam.gtsambackend

@@ -50,7 +50,7 @@ class FrontEnd:
                 # align current frame with the last one
                 key_frame = self.__frames[-1]
                 if not self.align_new_frame(frame_candidate, key_frame):
-                    print('Failed to align frame"')
+                    # print('Failed to align frame"')
                     return False
             self.__frames.append(frame_candidate)
             return True
@@ -65,8 +65,8 @@ class FrontEnd:
                 key_frame = self.__frames[0]
                 if self.align_new_frame(frame_candidate, key_frame):
                     return frame_candidate
-                else:
-                    print('Failed to align frame"')
+                #else:
+                    #print('Failed to align frame"')
         return None
 
     def align_new_frame(self, frame_candidate, key_frame):
