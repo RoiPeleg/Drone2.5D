@@ -16,6 +16,8 @@ class DroneController:
         self.__min_rotate = -100
 
         self.__max_speed = 3 * 100 / self.__resolution # 3 meters/seconds
+        self.__min_speed = - 3 * 100 / self.__resolution # 3 meters/seconds
+
         self.__speed_x = 0
         self.__speed_y = 0
         self.__acceleration_x = 1 * 100 / self.__resolution
@@ -43,8 +45,8 @@ class DroneController:
                 
             if self.__speed_x > self.__max_speed:
                 self.__speed_x = self.__max_speed
-            if self.__speed_x < 0:
-                self.__speed_x = 0
+            elif self.__speed_x < self.__min_speed:
+                self.__speed_x = self.__min_speed
 
             w_speed_y = ((math.sin(math.radians(self.__roll))) * (math.sin(math.radians(self.__max_rotate)))) * self.__max_speed
 
@@ -53,17 +55,17 @@ class DroneController:
             elif self.__speed_y > round(w_speed_y):
                 self.__speed_y = round(self.__speed_y - self.__acceleration_y * delta_t)
 
-            if self.__speed_y < 0:
-                self.__speed_y = 0
             if self.__speed_y > self.__max_speed:
                 self.__speed_y = self.__max_speed
+            elif self.__speed_y < self.__min_speed:
+                self.__speed_y = self.__min_speed
             
-            speed = math.sqrt(self.__speed_x**2 + self.__speed_y**2)
-            
-            print("speed: ", speed)
+            x = self.__speed_x * delta_t
+            y = self.__speed_y * delta_t
+            self.__robot.move(x, y)
 
-            x = speed * delta_t
-            self.__robot.move(x)
+            print("x: %f, y: %f" % (x, y))
+
             time.sleep(0.1)
             
             # speed decay

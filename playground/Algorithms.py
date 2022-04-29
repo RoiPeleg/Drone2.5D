@@ -14,6 +14,8 @@ class PID():
 
         self.delta_t = delta_t
         self.__max_measurements = max_measurements
+        self.__max_rotate = 100
+        self.__min_rotate = -100
         self.__disired_distance = disired_distance
     
     def compute(self, measurement):
@@ -24,6 +26,12 @@ class PID():
         self.intgral = self.intgral + error * self.delta_t        
         u_t = self.Kp * error + self.Ki * self.intgral + self.Kd * (error - self.last_error) / self.delta_t
         self.last_error = error
+        
+        if u_t < self.__min_rotate:
+            u_t = self.__min_rotate
+        if u_t > self.__max_rotate:
+            u_t = self.__max_rotate
+
         return u_t
     
 class Algorithms:
@@ -56,38 +64,40 @@ class Algorithms:
  
         self.__controller.land()
 
-    def Emengercy(self,PID_p,PID_r):
-        self.RotateCW()
-        self.Fly_Forward(PID_p,PID_r)
+    def Emengercy(self):
+        print("Emengercy state")
+        data = self.__controller.sensors_data()
+        pitch = data['pitch']
+        while pitch < 0:
+            self.__controller.pitch(-1)
+            data = self.__controller.sensors_data()
+            pitch = data['pitch']
         
 
     def Tunnel(self, right, left):
-        print("The drone enter to a tunnel")
-        epsilon = 25
-        counter = 0
+        print("Tunnel state")
+        epsilon = 0.15
+
         if abs(right - left) < epsilon:
+            # data = self.__controller.sensors_data()
+            # u_t_r = PID_r.compute(data['d_right'])
+            # roll = data['roll']
+            # if roll < u_t_r :
+            #     self.__controller.roll(1)
+            # elif roll > u_t_r :
+            #     self.__controller.roll(-1)
+
             if right < left:
                 self.__controller.roll(1)
-                counter += 1
             elif left < right:
-                self.___controller.roll(-1)
-                counter -= 1
-
-            # data = self.__controller.sensors_data()
-            #right, left = data["d_right"], data["d_left"]
-        
-        # if counter != 0:
-        #     if counter < 0:
-        #         self.___controller.yaw(1)
-        #     elif counter > 0:
-        #         self.___controller.yaw(-1)
+                self.__controller.roll(-1)
         
 
     def Fly_Forward(self,PID_p,PID_r):
         data = self.__controller.sensors_data()
 
         u_t_p = PID_p.compute(data['d_front'])
-        pitch = self.__controller.sensors_data()['pitch']
+        pitch = data['pitch']
         if pitch < u_t_p :
             self.__controller.pitch(1)
         elif pitch > u_t_p :
@@ -96,11 +106,11 @@ class Algorithms:
         print("u_t_p: ", u_t_p)
 
         u_t_r = PID_r.compute(data['d_right'])
-        roll = self.__controller.sensors_data()['roll']
+        roll = data['roll']
         if roll < u_t_r :
-            self.__controller.roll(1)
-        elif roll > u_t_r :
             self.__controller.roll(-1)
+        elif roll > u_t_r :
+            self.__controller.roll(1)
 
         print("u_t_r: ", u_t_r)
 
@@ -113,7 +123,7 @@ class Algorithms:
 
     def BAT(self):
         emengercy_tresh = 0.3
-        tunnel_tresh = 0.25
+        tunnel_tresh = 0.5
         front_tresh = 1
         right_far_tresh = 2.5
 
@@ -128,7 +138,7 @@ class Algorithms:
         
         while self.__auto:
             if front < emengercy_tresh:
-                self.Emengercy(PID_p,PID_r)
+                self.Emengercy()
             elif front < front_tresh:
                 self.RotateCCW()
             elif left < tunnel_tresh and right < tunnel_tresh:

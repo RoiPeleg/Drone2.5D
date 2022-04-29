@@ -17,9 +17,9 @@ class Odometry(Body):
         self.__gyro = abs(self.__angle - (angle + noise))
         self.__angle += angle + noise
 
-    def track_move(self, dist):
+    def track_move(self, dist_x, dist_y):
         noise = np.random.normal(self.__mu, self.__sigma)
-        self.move(dist + noise)
+        self.move(dist_x + noise, dist_y + noise)
 
     def track_altitude(self, alt):
         noise = np.random.normal(self.__mu, self.__sigma/100)

@@ -21,14 +21,28 @@ class Body:
         tr_mat = create_rotation_matrix_yx(angle)
         self.__rotation_matrix = np.matmul(self.__rotation_matrix, tr_mat)
 
-    def move(self, dist):
-        self.__pos = self.try_move(dist)
+    # def move(self, dist):
+    #     self.__pos = self.try_move(dist)
     
-    def try_move(self, dist):
+    # def try_move(self, dist):
+    #     direction = make_direction(self.__rotation_matrix)
+    #     new_pos = self.__pos.copy()
+    #     new_pos += direction * dist
+    #     return new_pos
+    
+    def move(self, dist_x, dist_y):
+        self.__pos = self.try_move(dist_x, dist_y)
+
+    def try_move(self, dist_x, dist_y):
+        # x axis
         direction = make_direction(self.__rotation_matrix)
-        new_pos = self.__pos.copy()
-        new_pos += direction * dist
-        return new_pos
+        pos = self.__pos.copy()
+        pos += direction * dist_x
+
+        # y axis
+        direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
+        pos += direction * dist_y
+        return pos
 
     def set_altitude(self, alt):
         self.__altitude = alt
