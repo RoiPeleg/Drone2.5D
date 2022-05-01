@@ -9,9 +9,11 @@ class Body:
 
     def __init__(self, filename):
         self.__pos = np.zeros(2)
-        self.start_drone_positions = {"assets/p15.png": np.array([-120.0, 620.0])
+        self.start_drone_positions = {"assets/p15.png": np.array([120.0, 610.0]),
+                                        "assets/p11.png": np.array([0.0, 100.0]),
+                                        "assets/map.png": np.array([160.0, 0.0])
 
-        }
+                                    }
         self.__pos = self.start_drone_positions[filename]
 
         self.__altitude = 0
@@ -41,7 +43,7 @@ class Body:
 
         # y axis
         direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
-        pos += direction * dist_y
+        pos += (-1) *direction * dist_y
         return pos
 
     def set_altitude(self, alt):

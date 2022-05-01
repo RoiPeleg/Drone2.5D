@@ -45,7 +45,7 @@ class Clock:
 def main():
     pygame.init()
     pygame.display.set_caption('SLAM playground')
-    filename = "assets/p15.png"
+    filename = "assets/p11.png"
 
     # parser = argparse.ArgumentParser()
     # parser.add_argument('filename', help='Environmental map filename')
@@ -132,7 +132,7 @@ def main():
             screen.blit(text_surface, dest=(570, 570))
 
             text_surface = font.render(f'roll: {data_sensors["roll"]}', True, (255, 0, 0))
-            screen.blit(text_surface, dest=(500, 570))
+            screen.blit(text_surface, dest=(480, 570))
 
             text_surface = font.render(f'yaw: {data_sensors["yaw"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(570, 600))

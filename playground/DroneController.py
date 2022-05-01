@@ -12,8 +12,8 @@ class DroneController:
         
         self.__resolution = 2.5 # 1 pixel = 2.5 cm
 
-        self.__max_rotate = 100
-        self.__min_rotate = -100
+        self.__max_rotate = 10
+        self.__min_rotate = -10
 
         self.__max_speed = 3 * 100 / self.__resolution # 3 meters/seconds
         self.__min_speed = - 3 * 100 / self.__resolution # 3 meters/seconds
@@ -22,11 +22,12 @@ class DroneController:
         self.__speed_y = 0
         self.__acceleration_x = 1 * 100 / self.__resolution
         self.__acceleration_y = 1 * 100 / self.__resolution
-        self.__angle_inc = 10
+        self.__angle_inc = 100
 
         self.__pitch = 0 
         self.__roll = 0
         self.__yaw = 0
+        self.__counter = 0
 
         self.t_move = threading.Thread(target=self.move, args=())
         self.__running = False
@@ -34,10 +35,23 @@ class DroneController:
     def move(self):
         delta_t = 0.1
         while self.__running:
-            w_speed_x =   ((math.sin(math.radians(self.__pitch))) * (math.sin(math.radians(self.__max_rotate)))) * self.__max_speed
-            # print('pitch amount',((math.sin(math.radians(self.__pitch)) * (math.sin(math.radians(self.__max_rotate))))))
-            # print('desired speed',w_speed)
 
+            sign = 0
+            if self.__counter > 0:
+                if self.__yaw < 0:
+                    sign = -1
+                elif self.__yaw > 0:
+                    sign = 1
+                print("sign * self.__angle_inc * delta_t: ", sign * self.__angle_inc * delta_t)
+                print("yaw: ", self.__yaw)
+
+                self.__robot.rotate(sign * self.__angle_inc * delta_t)
+                self.__counter -= 1
+                self.__yaw -= sign * self.__angle_inc * delta_t
+
+            w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
+            # print("w_speed_x: ", w_speed_x)
+            # print("self.__speed_x: ", self.__speed_x)
             if self.__speed_x < round(w_speed_x):
                 self.__speed_x = round(self.__speed_x + self.__acceleration_x * delta_t)
             elif self.__speed_x > round(w_speed_x):
@@ -48,7 +62,8 @@ class DroneController:
             elif self.__speed_x < self.__min_speed:
                 self.__speed_x = self.__min_speed
 
-            w_speed_y = ((math.sin(math.radians(self.__roll))) * (math.sin(math.radians(self.__max_rotate)))) * self.__max_speed
+            # w_speed_y = math.sin(math.radians(self.__roll) * 9) * self.__max_speed
+            w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
             if self.__speed_y < round(w_speed_y):
                 self.__speed_y = round(self.__speed_y + self.__acceleration_y * delta_t)
@@ -62,55 +77,36 @@ class DroneController:
             
             x = self.__speed_x * delta_t
             y = self.__speed_y * delta_t
+            # y = 0
             self.__robot.move(x, y)
 
-            print("x: %f, y: %f" % (x, y))
+            # print("x: %f, y: %f" % (x, y))
 
             time.sleep(0.1)
-            
-            # speed decay
-            # if self.__speed_x > 0:
-            #     self.__speed_x -= self.__acceleration_x
-            #     self.__pitch -= self.__angle_inc
-            # if self.__speed_x < 0:
-            #     self.__speed_x += self.__acceleration_x
-            #     self.__pitch += self.__angle_inc
-
 
     def stop(self):
         self.__running = False
         self.t_move.join()
 
-    def reset_movement(self):
-        self.__pitch = 0
-        self.__roll = 0
-        self.__yaw = 0
 
-    def yaw(self, dieraction):
-        assert dieraction == 1 or dieraction == -1, "dieraction should be 1 or -1, dieraction= " + str(dieraction)
-        self.__yaw += dieraction * self.__angle_inc
-
-        if self.__yaw < self.__min_rotate:
-            self.__yaw = self.__min_rotate
-        if self.__yaw > self.__max_rotate:
-            self.__yaw = self.__max_rotate
+    def yaw(self, angle):
+        self.__yaw = angle
+        if angle > 0:
+            self.__counter = angle / 10
+        elif angle < 0:
+            self.__counter = -1 * angle / 10
         
-        self.__robot.rotate(dieraction * self.__angle_inc)
+    def pitch(self, angle):
         
-    def pitch(self,sign):
-        assert sign == 1 or sign == -1, "sign should be 1 or -1, sign= " + str(sign)
-        
-        self.__pitch += sign * self.__angle_inc
+        self.__pitch = angle
         if self.__pitch < self.__min_rotate:
             self.__pitch = self.__min_rotate
         if self.__pitch > self.__max_rotate:
             self.__pitch = self.__max_rotate
         
+    def roll(self, angle):
 
-    def roll(self, sign):
-        assert sign == 1 or sign == -1, "sign should be 1 or -1, sign= " + str(sign)
-        
-        self.__roll += sign * self.__angle_inc
+        self.__roll = angle
         if self.__roll < self.__min_rotate:
             self.__roll = self.__min_rotate
         if self.__roll > self.__max_rotate:
@@ -149,8 +145,8 @@ class DroneController:
 
             "battery": self.__sensor_view.battery,
 
-            "pitch": self.__pitch,
-            "roll": self.__roll,
+            "pitch": round(self.__pitch, 2),
+            "roll": round(self.__roll, 2),
             "yaw": self.__yaw,
 
             "acc_x": self.__acceleration_x,

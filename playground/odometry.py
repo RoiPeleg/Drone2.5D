@@ -10,11 +10,12 @@ class Odometry(Body):
         self.__sigma = sigma
         self.__angle = 0
         self.__gyro = 0
+        self.__delta_t = 0.1
 
     def track_rotate(self, angle):
         noise = np.random.normal(self.__mu, self.__sigma)
         self.rotate(angle + noise)
-        self.__gyro = abs(self.__angle - (angle + noise))
+        self.__gyro = (angle + noise) / self.__delta_t
         self.__angle += angle + noise
 
     def track_move(self, dist_x, dist_y):
