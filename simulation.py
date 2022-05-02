@@ -52,17 +52,17 @@ def main():
     # args = parser.parse_args()
 
     # Create simulation objects
-
+    delta_t = 0.1
     world = World(filename, max_z= 3)
-    odometry = Odometry(filename, mu=0, sigma=1)  # noised measurements
+    odometry = Odometry(filename, mu=0, sigma=1, delta_t=delta_t)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
     robot = Robot(odometry, sensor, world, filename)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
-    controller = DroneController(robot, sensors_view)
-    algo = Algorithms(controller, mode="bat")
+    controller = DroneController(robot, sensors_view, delta_t=delta_t)
+    algo = Algorithms(controller, mode="bat", delta_t=delta_t)
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     

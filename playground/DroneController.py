@@ -23,7 +23,7 @@ class DroneController:
         self.__speed_y = 0
         self.__acceleration_x = 1 * 100 / self.__resolution
         self.__acceleration_y = 1 * 100 / self.__resolution
-        self.__angle_inc = 100
+        self.__angle_inc = delta_t * 1000
 
         self.__pitch = 0 
         self.__roll = 0
