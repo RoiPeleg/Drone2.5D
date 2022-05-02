@@ -52,7 +52,7 @@ def main():
     # args = parser.parse_args()
 
     # Create simulation objects
-    delta_t = 0.05
+    delta_t = 0.1
     world = World(filename, max_z= 3)
     odometry = Odometry(filename, mu=0, sigma=1, delta_t=delta_t)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements

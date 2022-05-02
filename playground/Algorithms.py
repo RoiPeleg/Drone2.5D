@@ -145,6 +145,7 @@ class Algorithms:
 
     def BAT(self):
         epsilon = 0.25
+        counter = 2
 
         emengercy_tresh = 0.3
         tunnel_tresh = 0.5
@@ -156,10 +157,10 @@ class Algorithms:
         right_prev = right
         front_prev = front
         PID_p = PID(1.5,0.004,0.4, disired_distance=0.3)
-        PID_r = PID(6,6,3)
+        PID_r = PID(3,3,1.5)
 
         PID_p_t = PID(1,0.006,0.6, disired_distance=0.2)
-        PID_r_t = PID(4,4,2, disired_distance=0.3)
+        PID_r_t = PID(2,2,1, disired_distance=0.3)
 
         self.__controller.takeoff()
         
@@ -171,6 +172,12 @@ class Algorithms:
             elif (right - right_prev)/self.__delta_t > epsilon:
                 print("fix roll cw")
                 self.RotateCW()
+                # Ido: this is new:
+                if counter % 2 == 0:
+                    epsilon = 0.4
+                else:
+                    epsilon = 0.25
+                counter = counter + 1
             elif left < tunnel_tresh and right < tunnel_tresh:
                 self.Tunnel(right, left, PID_p_t, PID_r_t)
             elif right > right_far_tresh:
