@@ -38,11 +38,12 @@ class PID():
         return u_t
     
 class Algorithms:
-    def __init__(self, controller, mode="random"):
+    def __init__(self, controller, mode="random", delta_t=0.1):
         self.__mode = mode
         self.__auto = False
         self.__t_id = None
         self.__controller = controller
+        self.__delta_t = delta_t
         
     def run(self):
         self.__auto = True
@@ -144,7 +145,6 @@ class Algorithms:
 
     def BAT(self):
         epsilon = 0.25
-        delta_t = 0.1
 
         emengercy_tresh = 0.3
         tunnel_tresh = 0.5
@@ -168,7 +168,7 @@ class Algorithms:
                 self.Emengercy()
             elif front < front_tresh:
                 self.RotateCCW()
-            elif (right - right_prev)/delta_t > epsilon:
+            elif (right - right_prev)/self.__delta_t > epsilon:
                 print("fix roll cw")
                 self.RotateCW()
             elif left < tunnel_tresh and right < tunnel_tresh:
@@ -182,6 +182,6 @@ class Algorithms:
             front_prev = front
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
-            time.sleep(delta_t)
+            time.sleep(self.__delta_t)
 
         self.__controller.land()

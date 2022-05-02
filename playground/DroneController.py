@@ -6,10 +6,11 @@ import numpy as np
 
 # Drone API
 class DroneController:
-    def __init__(self, __robot,__sensor_view):
+    def __init__(self, __robot,__sensor_view, delta_t = 0.1):
         self.__robot = __robot
         self.__sensor_view = __sensor_view
         
+        self.__delta_t = delta_t
         self.__resolution = 2.5 # 1 pixel = 2.5 cm
 
         self.__max_rotate = 10
@@ -33,7 +34,6 @@ class DroneController:
         self.__running = False
 
     def move(self):
-        delta_t = 0.1
         while self.__running:
 
             sign = 0
@@ -42,20 +42,20 @@ class DroneController:
                     sign = -1
                 elif self.__yaw > 0:
                     sign = 1
-                print("sign * self.__angle_inc * delta_t: ", sign * self.__angle_inc * delta_t)
+                print("sign * self.__angle_inc * delta_t: ", sign * self.__angle_inc * self.__delta_t)
                 print("yaw: ", self.__yaw)
 
-                self.__robot.rotate(sign * self.__angle_inc * delta_t)
+                self.__robot.rotate(sign * self.__angle_inc * self.__delta_t)
                 self.__counter -= 1
-                self.__yaw -= sign * self.__angle_inc * delta_t
+                self.__yaw -= sign * self.__angle_inc * self.__delta_t
 
             w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
             # print("w_speed_x: ", w_speed_x)
             # print("self.__speed_x: ", self.__speed_x)
             if self.__speed_x < round(w_speed_x):
-                self.__speed_x = round(self.__speed_x + self.__acceleration_x * delta_t)
+                self.__speed_x = round(self.__speed_x + self.__acceleration_x * self.__delta_t)
             elif self.__speed_x > round(w_speed_x):
-                self.__speed_x = round(self.__speed_x - self.__acceleration_x * delta_t)
+                self.__speed_x = round(self.__speed_x - self.__acceleration_x * self.__delta_t)
                 
             if self.__speed_x > self.__max_speed:
                 self.__speed_x = self.__max_speed
@@ -66,17 +66,17 @@ class DroneController:
             w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
             if self.__speed_y < round(w_speed_y):
-                self.__speed_y = round(self.__speed_y + self.__acceleration_y * delta_t)
+                self.__speed_y = round(self.__speed_y + self.__acceleration_y * self.__delta_t)
             elif self.__speed_y > round(w_speed_y):
-                self.__speed_y = round(self.__speed_y - self.__acceleration_y * delta_t)
+                self.__speed_y = round(self.__speed_y - self.__acceleration_y * self.__delta_t)
 
             if self.__speed_y > self.__max_speed:
                 self.__speed_y = self.__max_speed
             elif self.__speed_y < self.__min_speed:
                 self.__speed_y = self.__min_speed
             
-            x = self.__speed_x * delta_t
-            y = self.__speed_y * delta_t
+            x = self.__speed_x * self.__delta_t
+            y = self.__speed_y * self.__delta_t
             # y = 0
             self.__robot.move(x, y)
 

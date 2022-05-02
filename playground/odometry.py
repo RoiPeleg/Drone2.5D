@@ -4,13 +4,13 @@ from playground.environment.body import Body
 
 
 class Odometry(Body):
-    def __init__(self, filename, mu, sigma):
+    def __init__(self, filename, mu, sigma, delta_t=0.1):
         super().__init__(filename)
         self.__mu = mu
         self.__sigma = sigma
         self.__angle = 0
         self.__gyro = 0
-        self.__delta_t = 0.1
+        self.__delta_t = delta_t
 
     def track_rotate(self, angle):
         noise = np.random.normal(self.__mu, self.__sigma)
