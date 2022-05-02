@@ -37,6 +37,10 @@ class PID():
 
         return u_t
     
+    def reset(self):
+        self.last_error = 0
+        self.intgral = 0
+    
 class Algorithms:
     def __init__(self, controller, mode="random", delta_t=0.1):
         self.__mode = mode
@@ -57,6 +61,9 @@ class Algorithms:
         self.__auto = False
         self.__t_id.join()
     
+    def cosine_similarity(self, a, b):
+        return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
+
     def random_walk(self):
         self.__controller.takeoff()
         while self.__auto:
@@ -73,7 +80,7 @@ class Algorithms:
         self.__controller.pitch(-1)
         
 
-    def Tunnel(self, right, left, PID_p_t, PID_r_t):
+    def Tunnel(self, right, left, PID_p_t, PID_r_t, wall_align = 'd_right'):
         print("Tunnel state")
 
         data = self.__controller.sensors_data()
@@ -89,21 +96,22 @@ class Algorithms:
         # self.__controller.pitch(3)
 
         if abs(right - left) > epsilon:
-            u_t_r_t = PID_r_t.compute(data['d_right'])
+            u_t_r_t = PID_r_t.compute(data[wall_align])
             self.__controller.roll(u_t_r_t)
 
             print("u_t_r: ", u_t_r_t)
 
             print("right: ", right)
             print("left: ", left)
-
+        else:
+            return False
         #     if right < left:
         #         self.RotateCCW()
         #     elif left < right:
         #         self.RotateCW()
         
 
-    def Fly_Forward(self,PID_p,PID_r):
+    def Fly_Forward(self,PID_p,PID_r, wall_align = 'd_right'):
         data = self.__controller.sensors_data()
 
         u_t_p = PID_p.compute(data['d_front'])
@@ -115,7 +123,7 @@ class Algorithms:
         self.__controller.pitch(u_t_p)
         
         # print("pitch: ", pitch)
-        print("u_t_p: ", u_t_p)
+        # print("u_t_p: ", u_t_p)
 
         # desired_distance = 0.3
         # if data['d_right'] < desired_distance:
@@ -123,7 +131,7 @@ class Algorithms:
         # elif data['d_right'] > desired_distance:
         #     self.__controller.yaw(-3)
 
-        u_t_r = PID_r.compute(data['d_right'])
+        u_t_r = PID_r.compute(data[wall_align])
         roll = data['roll']
         # if roll < u_t_r :
         #     self.__controller.roll(-1)
@@ -132,7 +140,7 @@ class Algorithms:
         self.__controller.roll(u_t_r)
 
         # print("roll:" , roll)
-        print("u_t_r: ", u_t_r)
+        # print("u_t_r: ", u_t_r)
 
     def RotateCCW(self):
         self.__controller.yaw(10)
@@ -142,29 +150,32 @@ class Algorithms:
 
     def RotateCW_90(self):
         self.__controller.yaw(-90)
+    
+    def RotateCCW_90(self):
+        self.__controller.yaw(90)
 
     def BAT(self):
-        epsilon = 0.25
+        epsilon = 0.30
         counter = 2
 
         emengercy_tresh = 0.3
         tunnel_tresh = 0.5
         front_tresh = 1
         right_far_tresh = 2.5
+        left_far_tresh = 2.5
         
         data = self.__controller.sensors_data()
         front, right, left = data["d_front"], data["d_right"], data["d_left"]
         right_prev = right
         front_prev = front
         PID_p = PID(1.5,0.004,0.4, disired_distance=0.3)
-        PID_r = PID(3,3,1.5)
+        PID_r = PID(6,6,3)
 
         PID_p_t = PID(1,0.006,0.6, disired_distance=0.2)
-        PID_r_t = PID(2,2,1, disired_distance=0.3)
+        PID_r_t = PID(4,4,2, disired_distance=0.3)
 
         self.__controller.takeoff()
-        
-        while self.__auto:
+        while self.__auto and data["battery"] > 50:
             if front < emengercy_tresh:
                 self.Emengercy()
             elif front < front_tresh:
@@ -172,12 +183,6 @@ class Algorithms:
             elif (right - right_prev)/self.__delta_t > epsilon:
                 print("fix roll cw")
                 self.RotateCW()
-                # Ido: this is new:
-                if counter % 2 == 0:
-                    epsilon = 0.4
-                else:
-                    epsilon = 0.25
-                counter = counter + 1
             elif left < tunnel_tresh and right < tunnel_tresh:
                 self.Tunnel(right, left, PID_p_t, PID_r_t)
             elif right > right_far_tresh:
@@ -187,6 +192,62 @@ class Algorithms:
 
             right_prev = right
             front_prev = front
+            data = self.__controller.sensors_data()
+            front, right, left = data["d_front"], data["d_right"], data["d_left"]
+            time.sleep(self.__delta_t)
+        
+        # drone go home
+        
+        # while not self.Tunnel(right, left, PID_p_t, PID_r_t, wall_align='d_left'):
+        #     time.sleep(self.__delta_t)
+
+        PID_p.reset()
+        PID_p_t.reset()
+        PID_r.reset()
+        PID_r_t.reset()
+
+        self.__controller.pitch(0)
+        self.__controller.roll(0)
+        
+        data = self.__controller.sensors_data()
+        front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
+        
+        a = np.array([front, right, left, back])
+        a[a == np.inf] = 3.0
+        b = np.ones_like(a)
+        while self.__auto and np.sum(a - b) > 0.45:
+            
+            self.RotateCCW()
+            
+            data = self.__controller.sensors_data()
+            front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
+            b = np.array([back, left, right, front])
+            b[b == np.inf] = 3.0
+            print("np.sum(a - b): ", np.sum(a - b))
+            print(a,b)
+
+            
+
+            time.sleep(self.__delta_t)
+
+        left_prev = left
+        while self.__auto and data["battery"] > 0:
+            print("im here")
+            # if front < emengercy_tresh:
+            #     self.Emengercy()
+            # elif front < front_tresh:
+            #     self.RotateCW()
+            # elif (left - left_prev)/self.__delta_t > epsilon:
+            #     print("fix roll cw")
+            #     self.RotateCCW()
+            # elif left < tunnel_tresh and right < tunnel_tresh:
+            #     self.Tunnel(right, left, PID_p_t, PID_r_t, wall_align='d_left')
+            # elif left > left_far_tresh:
+            #     self.RotateCCW_90()
+            # else:
+            #     self.Fly_Forward(PID_p,PID_r, wall_align='d_left')
+
+            left_prev = left
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
             time.sleep(self.__delta_t)
