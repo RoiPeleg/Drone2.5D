@@ -115,31 +115,13 @@ class Algorithms:
         data = self.__controller.sensors_data()
 
         u_t_p = PID_p.compute(data['d_front'])
-        pitch = data['pitch']
-        # if pitch < u_t_p :
-        #     self.__controller.pitch(1)
-        # elif pitch > u_t_p :
-        #     self.__controller.pitch(-1)
         self.__controller.pitch(u_t_p)
         
-        # print("pitch: ", pitch)
         # print("u_t_p: ", u_t_p)
 
-        # desired_distance = 0.3
-        # if data['d_right'] < desired_distance:
-        #     self.__controller.yaw(3)
-        # elif data['d_right'] > desired_distance:
-        #     self.__controller.yaw(-3)
-
         u_t_r = PID_r.compute(data[wall_align])
-        roll = data['roll']
-        # if roll < u_t_r :
-        #     self.__controller.roll(-1)
-        # elif roll > u_t_r :
-        #     self.__controller.roll(1)
         self.__controller.roll(u_t_r)
 
-        # print("roll:" , roll)
         # print("u_t_r: ", u_t_r)
 
     def RotateCCW(self):
@@ -149,9 +131,11 @@ class Algorithms:
         self.__controller.yaw(-10)
 
     def RotateCW_90(self):
+        # print("RotateCCW_90")
         self.__controller.yaw(-90)
     
     def RotateCCW_90(self):
+        # print("RotateCCW_90")
         self.__controller.yaw(90)
 
     def BAT(self):
@@ -159,7 +143,7 @@ class Algorithms:
         counter = 2
 
         emengercy_tresh = 0.3
-        tunnel_tresh = 0.5
+        tunnel_tresh = 0.75
         front_tresh = 1
         right_far_tresh = 2.5
         left_far_tresh = 2.5
@@ -167,7 +151,6 @@ class Algorithms:
         data = self.__controller.sensors_data()
         front, right, left = data["d_front"], data["d_right"], data["d_left"]
         right_prev = right
-        front_prev = front
         PID_p = PID(1.5,0.004,0.4, disired_distance=0.3)
         PID_r = PID(6,6,3)
 
@@ -180,7 +163,7 @@ class Algorithms:
                 self.Emengercy()
             elif front < front_tresh:
                 self.RotateCCW()
-            elif (right - right_prev)/self.__delta_t > epsilon:
+            elif (right - right_prev)/self.__delta_t > epsilon: #and front > front_tresh*1.5:
                 print("fix roll cw")
                 self.RotateCW()
             elif left < tunnel_tresh and right < tunnel_tresh:
@@ -191,7 +174,6 @@ class Algorithms:
                 self.Fly_Forward(PID_p,PID_r)
 
             right_prev = right
-            front_prev = front
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
             time.sleep(self.__delta_t)
