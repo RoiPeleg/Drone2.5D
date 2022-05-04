@@ -1,6 +1,7 @@
 import random
 import time
 import threading
+from winreg import REG_NOTIFY_CHANGE_SECURITY
 import numpy as np
 
     
@@ -13,6 +14,7 @@ def rmse(a, b):
     return RMSE
 
 def norm(a):
+    print(a)
     return a / np.sqrt(np.sum(a**2))
 
 class PID():
@@ -108,10 +110,10 @@ class Algorithms:
             u_t_r_t = PID_r_t.compute(data[wall_align])
             self.__controller.roll(u_t_r_t)
 
-            print("u_t_r: ", u_t_r_t)
+            # print("u_t_r: ", u_t_r_t)
 
-            print("right: ", right)
-            print("left: ", left)
+            # print("right: ", right)
+            # print("left: ", left)
         else:
             return False
         #     if right < left:
@@ -127,11 +129,13 @@ class Algorithms:
         self.__controller.pitch(u_t_p)
         
         # print("u_t_p: ", u_t_p)
-
-        u_t_r = PID_r.compute(data[wall_align])
+        sign = 1
+        if wall_align == 'd_left':
+            sign = -1
+        u_t_r = sign * PID_r.compute(data[wall_align])
         self.__controller.roll(u_t_r)
 
-        # print("u_t_r: ", u_t_r)
+        #print("u_t_r: ", u_t_r)
 
     def RotateCCW(self):
         self.__controller.yaw(10)
@@ -149,7 +153,6 @@ class Algorithms:
 
     def BAT(self):
         epsilon = 0.30
-        counter = 2
 
         emengercy_tresh = 0.3
         tunnel_tresh = 0.75
@@ -158,7 +161,7 @@ class Algorithms:
         left_far_tresh = 2.5
         
         data = self.__controller.sensors_data()
-        front, right, left = data["d_front"], data["d_right"], data["d_left"]
+        front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
         right_prev = right
         PID_p = PID(1.5,0.004,0.4, disired_distance=0.3)
         PID_r = PID(6,6,3)
@@ -167,13 +170,16 @@ class Algorithms:
         PID_r_t = PID(4,4,2, disired_distance=0.3)
 
         self.__controller.takeoff()
+        home = np.array([front,right,left,back])
+        home[home == np.inf] = 3.0
+        home = norm(home)
         while self.__auto and data["battery"] > 50:
             if front < emengercy_tresh:
                 self.Emengercy()
             elif front < front_tresh:
                 self.RotateCCW()
             elif (right - right_prev)/self.__delta_t > epsilon: #and front > front_tresh*1.5:
-                print("fix roll cw")
+                #print("fix roll cw")
                 self.RotateCW()
             elif left < tunnel_tresh and right < tunnel_tresh:
                 self.Tunnel(right, left, PID_p_t, PID_r_t)
@@ -188,10 +194,6 @@ class Algorithms:
             time.sleep(self.__delta_t)
         
         # drone go home
-        
-        # while not self.Tunnel(right, left, PID_p_t, PID_r_t, wall_align='d_left'):
-        #     time.sleep(self.__delta_t)
-
         PID_p.reset()
         PID_p_t.reset()
         PID_r.reset()
@@ -219,7 +221,13 @@ class Algorithms:
             time.sleep(self.__delta_t)
 
         left_prev = left
-        while self.__auto and data["battery"] > 0:
+        current =  np.array([front, right, left, back])
+        current =  np.array([front, right, left, back])[::-1]
+        current[current == np.inf] = 3.0
+        reverse_current[reverse_current == np.inf] = 3.0
+        current = norm(current)
+        reverse_current = norm(reverse_current)
+        while self.__auto and data["battery"] > 0 and rmse(current, home) or rmse(reverse_current, home):
             if front < emengercy_tresh:
                 self.Emengercy()
             elif front < front_tresh:
@@ -238,5 +246,11 @@ class Algorithms:
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
             time.sleep(self.__delta_t)
+            current =  np.array([front, right, left, back])
+            reverse_current =  np.array([front, right, left, back])[::-1]
+            current[current == np.inf] = 3.0
+            reverse_current[reverse_current == np.inf] = 3.0
+            current = norm(current)
+            reverse_current = norm(reverse_current)
 
         self.__controller.land()
