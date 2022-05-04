@@ -65,7 +65,7 @@ def main():
     algo = Algorithms(controller, mode="bat")
 
     # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 15.0, current_time_to_live = 15.0)
+    clock = Clock(maximum_time_to_live = 30.0, current_time_to_live = 30.0)
 
     
     # Initialize rendering
@@ -97,6 +97,9 @@ def main():
 
             # gyro sensor:
             time.sleep(0.1)
+
+            if clock.current_time_to_live <= 0:
+                break
 
     t_clock = threading.Thread(target=clock_fun, args=())
     
