@@ -1,12 +1,18 @@
 import random
 import time
 import threading
-from winreg import REG_NOTIFY_CHANGE_SECURITY
 import numpy as np
+import math
 
-    
-def cosine_similarity(a, b):
-    return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
+def cosine_similarity(v1,v2):
+    "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
+    sumxx, sumxy, sumyy = 0, 0, 0
+    for i in range(len(v1)):
+        x = v1[i]; y = v2[i]
+        sumxx += x*x
+        sumyy += y*y
+        sumxy += x*y
+    return sumxy/math.sqrt(sumxx*sumyy)
 
 def rmse(a, b):
     MSE = np.square(np.subtract(a,b)).mean() 
@@ -14,8 +20,8 @@ def rmse(a, b):
     return RMSE
 
 def norm(a):
-    a[a == 0.0] = 0.00001
-    return a / np.sqrt(np.sum(a**2))
+    norm = np.linalg.norm(a)
+    return a/norm
 
 class PID():
     def __init__(self, Kp, Ki, Kd, delta_t=0.1, max_measurements=3, disired_distance=0.5):
@@ -163,14 +169,17 @@ class Algorithms:
         right_prev = right
 
         home = np.array([front,left,back,right])
-       
+        print("home: 0, ", home)
         home[home == np.inf] = 3.0
+        print("home: 1, ", home)
         home = norm(home)
-        home[home == np.inf] = 3.0
-        home = [(home[0] + home[3])/2.0, (home[1] + home[2])/2.0, (home[0] + home[3])/2.0, (home[1] + home[2])/2.0] 
-        homes = [home, np.array([left,back,right,front]), home[::-1], np.array([right,front,left,back])]
+        print("home: 2,",home)
         
-        print("home[1]: ", homes[1])
+        home = [(home[0] + home[3])/2.0, (home[1] + home[2])/2.0, (home[0] + home[3])/2.0, (home[1] + home[2])/2.0] 
+        # homes = [home, np.array([left,back,right,front]), home[::-1], np.array([right,front,left,back])]
+        homes = [home, np.array([home[1],home[2],home[3],home[0]]), home[::-1], np.array([home[3],home[0],home[1],home[2]])]
+        
+        print("homes: ", homes)
         while self.__auto and data["battery"] > 80:
             if front < emengercy_tresh:
                 self.Emengercy()
@@ -223,35 +232,16 @@ class Algorithms:
             time.sleep(self.__delta_t)
 
         min_index_deg = rmses.index(min(rmses))
-        print("min_index_deg: ",min_index_deg)
-        # self.__controller.yaw(min_index_deg * 10x``)
-        
-        for i in range(min_index_deg):
+        for _ in range(min_index_deg):
             self.RotateCCW()
-
-        # while self.__auto and rmse(a,b) > 0.1:
-        #     self.RotateCCW()
-            
-        #     data = self.__controller.sensors_data()
-        #     front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
-        #     b = np.array([front,left,back,right])[::-1]
-        #     b[b == np.inf] = 3.0
-        #     b = norm(b)
-        #     time.sleep(self.__delta_t)
 
         left_prev = left
         current =  np.array([front,left,back,right])
         current[current == np.inf] = 3.0
         current = norm(current)
+        rmses = [rmse(current, v) for v in homes]
 
-        reverse_current =  np.array([front,left,back,right])[::-1]
-        reverse_current[reverse_current == np.inf] = 3.0
-        reverse_current = norm(reverse_current)
-
-        print("current: ", current)
-        print("reverse_current: ", reverse_current)
-
-        while self.__auto and data["battery"] > 0 and (rmse(current, homes[0]) > 0.1 or rmse(current, homes[1]) > 0.1 or rmse(current, homes[2]) > 0.1 or rmse(current, homes[3]) > 0.1):
+        while self.__auto and data["battery"] > 0 and min(rmses) > 0.1:
             if front < emengercy_tresh:
                 self.Emengercy()
             elif front < front_tresh:
@@ -265,14 +255,18 @@ class Algorithms:
             else:
                 self.Fly_Forward(PID_p,PID_r, wall_align='d_left')
 
+            print("current: ", current)
+
             left_prev = left
             data = self.__controller.sensors_data()
             front, right, left = data["d_front"], data["d_right"], data["d_left"]
             current = np.array([front, right, left, back])
             current[current == np.inf] = 3.0
             current = norm(current)
+            rmses = [rmse(current, v) for v in homes]
 
-            print("current: ", current)
+            print("min(rmses)", min(rmses))
+
             time.sleep(self.__delta_t)
             
 
