@@ -44,7 +44,7 @@ class Clock:
 
 def main():
     pygame.init()
-    pygame.display.set_caption('SLAM playground')
+    pygame.display.set_caption('BAT drone simulation')
     filename = "assets/p11.png"
 
     # parser = argparse.ArgumentParser()
@@ -64,8 +64,8 @@ def main():
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller, odometry, mode="bat")
 
-    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    # clock = Clock(maximum_time_to_live = 60.0, current_time_to_live = 60.0)
+    #clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    clock = Clock(maximum_time_to_live = 2*60.0, current_time_to_live = 2*60.0)
 
     
     # Initialize rendering
@@ -97,6 +97,7 @@ def main():
 
             # gyro sensor:
             sensors_view.take_measurements_gyro(odometry)
+    
             time.sleep(0.1)
 
             if clock.current_time_to_live <= 0:
@@ -133,6 +134,9 @@ def main():
             
             text_surface = font.render(f'Battery: {data_sensors["battery"]}%', True, (255, 0, 0))
             screen.blit(text_surface, dest=(550, 15))
+            
+            text_surface = font.render(f'State: {algo.state}', True, (255, 0, 0))
+            screen.blit(text_surface, dest=(300, 15))
             
             text_surface = font.render(f'pitch: {data_sensors["pitch"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(570, 570))

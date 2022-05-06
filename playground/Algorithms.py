@@ -123,6 +123,7 @@ class Algorithms:
     def __init__(self, controller, odometry, mode="random", delta_t=0.1):
         self.__mode = mode
         self.__auto = False
+        self.__state = None
         
         self.__t_id = None
         self.__data_id = None
@@ -133,17 +134,19 @@ class Algorithms:
         self.__delta_t = delta_t
         self.to_draw = []
         self.local_pos = np.array([0.0,0.0])
+        self.local_start = None
         self.disable_roll = False
         self.__rotation_matrix = np.identity(3)
 
         #PIDs
-        self.PID_p = PID(1.5,0.004,0.4, disired_distance=0.3)
-        self.PID_r = PID(6,6,3)
+        self.PID_p = PID(1.5,0.004,0.04, disired_distance=0.3)
+        self.PID_r = PID(4.5,5,3,disired_distance=0.3)
+        
+        #tunnel PIDs
+        self.PID_p_t = PID(1.5,0.06,0.6,disired_distance=0.2)
+        self.PID_r_t = PID(3,3,2,disired_distance=0.3)
 
-        self.PID_p_t = PID(1,0.006,0.6, disired_distance=0.2)
-        self.PID_r_t = PID(4,4,2, disired_distance=0.3)
-
-        # keeps trak of itersactions passed
+        # keeps track of itersactions passed
         self.intersections = []
         
         # BAT tresholds
@@ -164,6 +167,7 @@ class Algorithms:
             self.__t_id = threading.Thread(target=self.random_walk, args=())
         if self.__mode == "bat":
             self.__t_id = threading.Thread(target=self.BAT, args=())
+            
         self.__data_id = threading.Thread(target=self.sample_data, args=())
         self.__data_id.start()
         self.__t_id.start()
@@ -197,6 +201,10 @@ class Algorithms:
             
             self.local_pos = self.__odometry.position
             time.sleep(delta_t)
+    
+    @property
+    def state(self):
+        return self.__state
 
     def random_walk(self):
         self.__controller.takeoff()
@@ -210,34 +218,30 @@ class Algorithms:
         self.__controller.land()
 
     def Emengercy(self):
-        print("Emengercy state")
+        self.__state = 'Emengercy'
+        # print("Emengercy state")
         self.__controller.pitch(-1)
         
 
-    def Tunnel(self, left, right, PID_p_t, PID_r_t, wall_align = 'd_right'):
-        print("Tunnel state")
-
-        data = self.__controller.sensors_data()
-
-        u_t_p_t = PID_p_t.compute(data['d_front'])
-        self.__controller.pitch(u_t_p_t)
-        
+    def Tunnel(self, left, right, wall_align = 'd_right'):
+        # print("Tunnel state")
+        self.__state = 'Tunnel'
+        u_t_p_t = self.PID_p_t.compute(self.__data['d_front'])
+        self.__controller.pitch(u_t_p_t)        
         # print("u_t_p_t: ", u_t_p_t)
 
-        
-        epsilon = 0.25
-        if abs(right - left) > epsilon:
-            u_t_r_t = PID_r_t.compute(data[wall_align])
+        epsilon = 0.2
+        if abs(right - left) > epsilon :
+            u_t_r_t = self.PID_r_t.compute(self.__data[wall_align])
             self.__controller.roll(u_t_r_t)
 
             # print("u_t_r: ", u_t_r_t)
             # print("right: ", right)
             # print("left: ", left)       
 
-    def Fly_Forward(self,PID_p,PID_r, wall_align = 'd_right'):
-        data = self.__controller.sensors_data()
-
-        u_t_p = PID_p.compute(data['d_front'])
+    def Fly_Forward(self, wall_align = 'd_right'):
+        self.__state = 'Forward'
+        u_t_p = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p)
         
         # print("u_t_p: ", u_t_p)
@@ -246,22 +250,26 @@ class Algorithms:
             sign = -1
         
         if not self.disable_roll :
-            u_t_r = sign * PID_r.compute(data[wall_align])
+            u_t_r = sign * self.PID_r.compute(self.__data[wall_align])
             self.__controller.roll(u_t_r)
 
-        #print("u_t_r: ", u_t_r)
+            # print("u_t_r: ", u_t_r)
 
     def RotateCCW(self):
+        self.__state = 'Rotate CCW'
         self.__controller.yaw(10)
     
     def RotateCW(self):
+        self.__state = 'Rotate CW'
         self.__controller.yaw(-10)
 
     def RotateCW_90(self):
+        self.__state = 'Rotate 90CW'
         # print("RotateCCW_90")
         self.__controller.yaw(-90)
     
     def RotateCCW_90(self):
+        self.__state = 'Rotate 90CCW'
         # print("RotateCCW_90")
         self.__controller.yaw(90)
 
@@ -272,8 +280,8 @@ class Algorithms:
         rmses = []
         for deg in range(0, 360, 10):
             self.RotateCCW()
-            data = self.__controller.sensors_data()
-            rotate_current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])[::-1]
+            
+            rotate_current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])[::-1]
             rotate_current[rotate_current == np.inf] = 3.0
             rotate_current = norm(rotate_current)
 
@@ -286,10 +294,10 @@ class Algorithms:
             self.RotateCCW()
             
     def BAT(self):
-        epsilon = 0.30
+        epsilon = 0.275
         
         self.__controller.takeoff()
-        self.local_pos = np.array([0.0, 0.0])
+        #self.local_pos = np.array([0.0, 0.0])
         
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         prev = current.copy()
@@ -304,9 +312,14 @@ class Algorithms:
         intersections = []
         is_turnning = False
         direction = 'front'
+        self.local_start = self.local_pos.copy()
         while self.__auto and self.__data["battery"] > 60:
-            if current[3] < self.right_far_tresh:
-                self.disable_roll = False
+            # if current[3] > 2.5:
+            #     self.disable_roll = False
+            self.disable_roll = False  
+            if is_intersection(current, prev) != None:
+                self.disable_roll = True               
+                is_turnning = True
 
             if current[0] < self.emengercy_tresh:
                 self.Emengercy()
@@ -314,17 +327,20 @@ class Algorithms:
                 self.RotateCCW()
             elif (current[3] - prev[3])/self.__delta_t > epsilon: #and front > front_tresh*1.5:
                 #print("fix roll cw")
+                self.disable_roll = True
                 self.RotateCW()
             elif current[1] < self.tunnel_tresh and current[3] < self.tunnel_tresh:
-                self.Tunnel(current[1], current[3], self.PID_p_t, self.PID_r_t)
+                self.Tunnel(current[1], current[3])
+                # self.PID_p.reset()
+                # self.PID_r.reset()
             elif current[3] > self.right_far_tresh:
                 self.disable_roll = True
                 self.RotateCW_90()
-            elif is_intersection(current, prev) != None:
-                self.Fly_Forward(self.PID_p_t,self.PID_r_t)               
-                is_turnning = True
             else:
-                self.Fly_Forward(self.PID_p,self.PID_r)
+                self.Fly_Forward()
+                # self.PID_p_t.reset()
+                # self.PID_r_t.reset()
+
             
             prev = current.copy()
             current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
@@ -335,7 +351,7 @@ class Algorithms:
                 t = turn(prev, current)
                 intersections.append((current, t))
                 self.to_draw.append(self.__controller.position)
-            print("pos",self.local_pos)
+            #print("pos",self.local_pos)
 
             time.sleep(self.__delta_t)
         
@@ -350,11 +366,18 @@ class Algorithms:
         self.__controller.roll(0)
         
         # rotate 180 degrees
-        self.rotate180()
+        if self.local_pos[1] > self.local_start[1]:
+            self.rotate180()
         
         # navigate home
         self.GoHome(homes)
-        
+
+    # retuns the mathcing the given intersection
+    def match_intersection(self,current):
+        inters_dist = [rmse(current, v) for v in self.intersections]
+        print(inters_dist)
+        return np.argmin(inters_dist)
+
     def GoHome(self, homes):
         
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])        
@@ -377,33 +400,36 @@ class Algorithms:
             elif (current[1] - prev[1])/self.__delta_t > epsilon:
                 self.RotateCCW()
             elif current[1] < self.tunnel_tresh and current[3] < self.tunnel_tresh:
-                self.Tunnel(current[1], current[3], self.PID_p_t, self.PID_r_t, wall_align='d_left')
+                self.Tunnel(current[1], current[3], wall_align='d_left')
             elif current[1] > self.left_far_tresh:
                 self.RotateCCW_90()
             else:
-                self.Fly_Forward(self.PID_p,self.PID_r, wall_align='d_left')
+                self.Fly_Forward(wall_align='d_left')
 
             prev = current.copy()
 
             current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
-            if is_intersection(current) and not is_turnning:
+            if is_intersection(current,prev) and not is_turnning:
                 is_turnning = True
-                direction = self.intersections[-1][1]
+                norm_current = current.copy()
+                norm_current[norm_current == np.inf] = 3.0
+                norm_current = norm(norm_current)
+                direction = self.intersections[self.match_intersection(current)][1]
                 if direction == 'right':
                     self.RotateCCW_90()
                 elif direction == 'left':
                     self.RotateCW_90()
             elif done_turnning(direction, current):                    
                 is_turnning = False
-                self.intersections.remove(-1)
+                # self.intersections.pop
 
             norm_current = current.copy()
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
             rmses = [rmse(norm_current, v) for v in homes]
 
-            print("min(rmses): ", min(rmses))
-            print("current: ", current)
+            # print("min(rmses): ", min(rmses))
+            # print("current: ", current)
 
             time.sleep(self.__delta_t)
 

@@ -86,7 +86,6 @@ class DroneController:
             y = self.__speed_y * self.__delta_t
             # y = 0
             self.__robot.move(x, y)
-
             # print("x: %f, y: %f" % (x, y))
 
             time.sleep(0.1)
