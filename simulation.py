@@ -62,7 +62,7 @@ def main():
     # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
     # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
-    algo = Algorithms(controller, mode="bat")
+    algo = Algorithms(controller, odometry, mode="bat")
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     # clock = Clock(maximum_time_to_live = 60.0, current_time_to_live = 60.0)
@@ -96,6 +96,7 @@ def main():
             sensors_view.take_measurements_barometer(odometry)
 
             # gyro sensor:
+            sensors_view.take_measurements_gyro(odometry)
             time.sleep(0.1)
 
             if clock.current_time_to_live <= 0:
@@ -164,7 +165,7 @@ def main():
             text_surface = font.render(f'optical: [{data_sensors["v_x"]}, {data_sensors["v_y"]}]', True, (255, 0, 0))
             screen.blit(text_surface, dest=(1100, 575))
             
-            text_surface = font.render(f'gyro: {round(robot.odomentry.gyro, 2)}', True, (255, 0, 0))
+            text_surface = font.render(f'gyro: {data_sensors["gyro"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(1100, 600))
             
             

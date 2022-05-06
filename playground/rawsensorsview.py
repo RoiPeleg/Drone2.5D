@@ -14,6 +14,7 @@ class RawSensorsView:
         self.__prev_pos = None
         self.__prev_pos_real = None
         self.__opticalflow = [0, 0]
+        self.__gyro = 0
         self.__battery = 100
 
         self.__drone_height = 0
@@ -37,7 +38,10 @@ class RawSensorsView:
             p =  odometry.position
             self.__opticalflow = abs(p - self.prev_pos_real)
         self.__prev_pos_real = odometry.position
-
+        
+    def take_measurements_gyro(self, odometry):
+        self.__gyro = odometry.gyro
+        
     # mesures lidar distances
     def take_measurements(self, odometry, sensor):
         # Process odometery
@@ -88,6 +92,8 @@ class RawSensorsView:
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
 
+
+
     @property
     def distance_from_obstacles(self):
         return self.__distance_from_obstacles
@@ -105,6 +111,10 @@ class RawSensorsView:
     def opticalflow(self):
         return self.__opticalflow
     
+    @property
+    def gyro(self):
+        return self.__gyro
+
     @property
     def prev_pos_real(self):
         return self.__prev_pos_real

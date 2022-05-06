@@ -150,6 +150,7 @@ class DroneController:
             "v_x": round(self.__sensor_view.opticalflow[0], 2),
             "v_y": round(self.__sensor_view.opticalflow[1], 2),
 
+            "gyro": round(self.__sensor_view.gyro, 2),
             "battery": self.__sensor_view.battery,
 
             "pitch": round(self.__pitch, 2),

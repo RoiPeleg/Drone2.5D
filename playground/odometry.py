@@ -15,7 +15,7 @@ class Odometry(Body):
     def track_rotate(self, angle):
         noise = np.random.normal(self.__mu, self.__sigma)
         self.rotate(angle + noise)
-        self.__gyro = (angle + noise) / self.__delta_t
+        self.__gyro = (angle + noise) * self.__delta_t
         self.__angle += angle + noise
 
     def track_move(self, dist_x, dist_y):
@@ -28,5 +28,4 @@ class Odometry(Body):
 
     @property
     def gyro(self):
-        #noise = np.random.normal(self.__mu, self.__sigma)
         return self.__gyro 
