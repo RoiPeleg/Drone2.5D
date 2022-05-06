@@ -32,6 +32,10 @@ class DroneController:
 
         self.t_move = threading.Thread(target=self.move, args=())
         self.__running = False
+    
+    @property
+    def position(self):
+        return self.__robot.position
 
     def move(self):
         while self.__running:
@@ -134,7 +138,7 @@ class DroneController:
         # [d0-d4, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ]
 
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
-        
+
         data = {
             "d_left": round(ds[1], 2),
             "d_right": round(ds[3], 2),
@@ -155,5 +159,6 @@ class DroneController:
             "acc_x": self.__acceleration_x,
             "acc_y": self.__acceleration_y,
             "acc_z": None,
+
         }
         return data

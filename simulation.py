@@ -55,7 +55,7 @@ def main():
     delta_t = 0.1
     world = World(filename, max_z= 3)
     odometry = Odometry(filename, mu=0, sigma=1, delta_t=delta_t)  # noised measurements
-    sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=1)  # noised measurements
+    sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
     robot = Robot(odometry, sensor, world, filename)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
@@ -64,8 +64,8 @@ def main():
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller, mode="bat")
 
-    # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 30.0, current_time_to_live = 30.0)
+    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    # clock = Clock(maximum_time_to_live = 60.0, current_time_to_live = 60.0)
 
     
     # Initialize rendering
@@ -125,7 +125,7 @@ def main():
 
             world.draw(screen)
             robot.draw(screen, world.height, world.width)
-            
+            algo.draw(screen, world.height, world.width)
             sensors_view.draw(screen, offset=world.width)
             
             data_sensors = controller.sensors_data()

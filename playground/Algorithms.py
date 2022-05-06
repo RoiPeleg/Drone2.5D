@@ -1,8 +1,22 @@
+from faulthandler import disable
 import random
 import time
 import threading
 import numpy as np
 import math
+import pygame
+from playground.utils.transform import to_screen_coords
+
+def done_turnning(direction,current):
+    treshold = 2.5
+    done = False
+    if direction == 'right' and treshold < current[1]:
+        done = True
+    elif direction == 'left' and treshold < current[3]:
+        done = True
+    elif treshold < current[1]:
+        done = True
+    return done 
 
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
@@ -21,8 +35,46 @@ def rmse(a, b):
 
 def norm(a):
     norm = np.linalg.norm(a)
+    if norm == np.nan :
+        norm = 0.001
     return a/norm
 
+def align_to(local_pos):
+    if local_pos[1] > 0: #x
+        if local_pos[0] > 0: #y
+            return ('left', 'down')
+        elif local_pos[0] < 0: #y
+            return ('left', 'up')
+    elif local_pos[1] < 0: #x
+        if local_pos[0] > 0: #y
+            return ('right','down')
+        elif local_pos[0] < 0: #y
+            return ('right','up')
+
+def is_intersection(dis):
+    threshold = 2.5
+    if dis[0] > threshold and dis[1] > threshold:
+        return True
+    if dis[0] > threshold and dis[3] > threshold:
+        return True
+
+    return False
+
+def turn(prev,current):
+    threshold = 2.5
+    cords = np.argwhere(prev > threshold)
+    for c in cords:
+        if threshold <= current[c]:
+            if c == 0:
+                return "front"
+            elif c == 1:
+                return "left"
+            elif c ==2 :
+                return "back"
+            else :
+                return "right"
+
+    
 class PID():
     def __init__(self, Kp, Ki, Kd, delta_t=0.1, max_measurements=3, disired_distance=0.5):
         self.Kp = Kp
@@ -68,6 +120,14 @@ class Algorithms:
         self.__t_id = None
         self.__controller = controller
         self.__delta_t = delta_t
+        self.to_draw = []
+        self.local_pos = (0,0)
+        self.disable_roll = False
+
+    def draw(self, screen, h, w):
+        for p in self.to_draw :
+            position = to_screen_coords(h, w, p)
+            pygame.draw.circle(screen, color=(0, 255, 0), center=position, radius=10)
         
     def run(self):
         self.__auto = True
@@ -97,7 +157,7 @@ class Algorithms:
         self.__controller.pitch(-1)
         
 
-    def Tunnel(self, right, left, PID_p_t, PID_r_t, wall_align = 'd_right'):
+    def Tunnel(self, left, right, PID_p_t, PID_r_t, wall_align = 'd_right'):
         print("Tunnel state")
 
         data = self.__controller.sensors_data()
@@ -129,8 +189,10 @@ class Algorithms:
         sign = 1
         if wall_align == 'd_left':
             sign = -1
-        u_t_r = sign * PID_r.compute(data[wall_align])
-        self.__controller.roll(u_t_r)
+        
+        if not self.disable_roll :
+            u_t_r = sign * PID_r.compute(data[wall_align])
+            self.__controller.roll(u_t_r)
 
         #print("u_t_r: ", u_t_r)
 
@@ -164,40 +226,59 @@ class Algorithms:
         PID_r_t = PID(4,4,2, disired_distance=0.3)
 
         self.__controller.takeoff()
+        self.local_pos = np.array([0.0, 0.0])
+        
         data = self.__controller.sensors_data()
-        front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
-        right_prev = right
+        current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])
+        right_prev = current[3]
 
-        home = np.array([front,left,back,right])
-        print("home: 0, ", home)
+        home = current.copy()
         home[home == np.inf] = 3.0
-        print("home: 1, ", home)
         home = norm(home)
-        print("home: 2,",home)
         
         home = [(home[0] + home[3])/2.0, (home[1] + home[2])/2.0, (home[0] + home[3])/2.0, (home[1] + home[2])/2.0] 
-        # homes = [home, np.array([left,back,right,front]), home[::-1], np.array([right,front,left,back])]
         homes = [home, np.array([home[1],home[2],home[3],home[0]]), home[::-1], np.array([home[3],home[0],home[1],home[2]])]
         
-        print("homes: ", homes)
-        while self.__auto and data["battery"] > 80:
-            if front < emengercy_tresh:
+        intersections = []
+        flag = False
+
+        while self.__auto and data["battery"] > 60:
+            if current[3] < right_far_tresh:
+                self.disable_roll = False
+            if current[0] < emengercy_tresh:
                 self.Emengercy()
-            elif front < front_tresh:
+            elif current[0] < front_tresh:
                 self.RotateCCW()
-            elif (right - right_prev)/self.__delta_t > epsilon: #and front > front_tresh*1.5:
+            elif (current[3] - right_prev)/self.__delta_t > epsilon: #and front > front_tresh*1.5:
                 #print("fix roll cw")
                 self.RotateCW()
-            elif left < tunnel_tresh and right < tunnel_tresh:
-                self.Tunnel(right, left, PID_p_t, PID_r_t)
-            elif right > right_far_tresh:
+            elif current[1] < tunnel_tresh and current[3] < tunnel_tresh:
+                self.Tunnel(current[1], current[3], PID_p_t, PID_r_t)
+            elif current[3] > right_far_tresh:
+                self.disable_roll = True
                 self.RotateCW_90()
+                direction = 'right'
+            elif is_intersection(current):
+                self.Fly_Forward(PID_p_t,PID_r_t)
+                prev_dis = current.copy()
+                is_turnning = True
             else:
                 self.Fly_Forward(PID_p,PID_r)
 
-            right_prev = right
+            right_prev = current[3]
             data = self.__controller.sensors_data()
-            front, right, left = data["d_front"], data["d_right"], data["d_left"]
+            current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])
+            
+            direction = 'front'
+            if done_turnning(direction, current):
+                is_turnning = False
+                t = turn(prev_dis, current)
+                intersections.append((current, t))
+                self.to_draw.append(self.__controller.position)
+
+            self.local_pos[0] += data['v_y']
+            self.local_pos[1] += data['v_x']
+
             time.sleep(self.__delta_t)
         
         # drone go home
@@ -209,25 +290,22 @@ class Algorithms:
         self.__controller.pitch(0)
         self.__controller.roll(0)
         
-        data = self.__controller.sensors_data()
-        front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
-        
         # rotate 180 degrees
-        a = np.array([front,left,back,right])
-        a[a == np.inf] = 3.0
-        a = norm(a)
-        b = np.ones_like(a)
+        data = self.__controller.sensors_data()
+        current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])
+        
+        current[current == np.inf] = 3.0
+        current = norm(current)
         
         rmses = []
         for deg in range(0, 360, 10):
             self.RotateCCW()
             data = self.__controller.sensors_data()
-            front, right, left, back = data["d_front"], data["d_right"], data["d_left"], data["d_back"]
-            b = np.array([front,left,back,right])[::-1]
-            b[b == np.inf] = 3.0
-            b = norm(b)
+            rotate_current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])[::-1]
+            rotate_current[rotate_current == np.inf] = 3.0
+            rotate_current = norm(rotate_current)
 
-            rmses.append(rmse(a,b))
+            rmses.append(rmse(current,rotate_current))
 
             time.sleep(self.__delta_t)
 
@@ -235,37 +313,50 @@ class Algorithms:
         for _ in range(min_index_deg):
             self.RotateCCW()
 
-        left_prev = left
-        current =  np.array([front,left,back,right])
+        left_prev = current[1]
+
+        data = self.__controller.sensors_data()
+        current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])        
         current[current == np.inf] = 3.0
         current = norm(current)
         rmses = [rmse(current, v) for v in homes]
 
-        while self.__auto and data["battery"] > 0 and min(rmses) > 0.1:
-            if front < emengercy_tresh:
+        is_turnning = False
+        direction = None
+        while self.__auto and data["battery"] > 0 and min(rmses) > 0.1: #rmse(local_pos, np.array([0.0, 0.0])) > 1:
+            if current[0] < emengercy_tresh:
                 self.Emengercy()
-            elif front < front_tresh:
+            elif current[0] < front_tresh:
                 self.RotateCW()
-            elif (left - left_prev)/self.__delta_t > epsilon:
+            elif (current[1] - left_prev)/self.__delta_t > epsilon:
                 self.RotateCCW()
-            elif left < tunnel_tresh and right < tunnel_tresh:
-                self.Tunnel(right, left, PID_p_t, PID_r_t, wall_align='d_left')
-            elif left > left_far_tresh:
+            elif current[1] < tunnel_tresh and current[3] < tunnel_tresh:
+                self.Tunnel(current[1], current[3], PID_p_t, PID_r_t, wall_align='d_left')
+            elif current[1] > left_far_tresh:
                 self.RotateCCW_90()
             else:
                 self.Fly_Forward(PID_p,PID_r, wall_align='d_left')
 
-            print("current: ", current)
-
-            left_prev = left
+            left_prev = current[1]
             data = self.__controller.sensors_data()
-            front, right, left = data["d_front"], data["d_right"], data["d_left"]
-            current = np.array([front, right, left, back])
+            current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])
+            if is_intersection(current) and not is_turnning:
+                is_turnning = True
+                direction = intersections[-1][1]
+                if direction == 'right':
+                    self.RotateCCW_90()
+                elif direction == 'left':
+                    self.RotateCW_90()
+            elif done_turnning(direction, current):                    
+                is_turnning = False
+                intersections.remove(-1)
+
             current[current == np.inf] = 3.0
             current = norm(current)
             rmses = [rmse(current, v) for v in homes]
 
-            print("min(rmses)", min(rmses))
+            print("min(rmses): ", min(rmses))
+            print("current: ", current)
 
             time.sleep(self.__delta_t)
             
