@@ -241,10 +241,11 @@ class Algorithms:
         
         intersections = []
         flag = False
-
+        direction = 'front'
         while self.__auto and data["battery"] > 60:
             if current[3] < right_far_tresh:
                 self.disable_roll = False
+
             if current[0] < emengercy_tresh:
                 self.Emengercy()
             elif current[0] < front_tresh:
@@ -261,6 +262,8 @@ class Algorithms:
             elif is_intersection(current):
                 self.Fly_Forward(PID_p_t,PID_r_t)
                 prev_dis = current.copy()
+                if np.isinf(current[1]):
+                    direction = 'left'
                 is_turnning = True
             else:
                 self.Fly_Forward(PID_p,PID_r)
@@ -269,7 +272,6 @@ class Algorithms:
             data = self.__controller.sensors_data()
             current = np.array([data["d_front"], data["d_left"], data["d_back"], data["d_right"]])
             
-            direction = 'front'
             if done_turnning(direction, current):
                 is_turnning = False
                 t = turn(prev_dis, current)
