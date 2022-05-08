@@ -30,7 +30,7 @@ class DroneController:
         self.__yaw = 0
         self.__counter = 0
 
-        self.t_move = threading.Thread(target=self.move, args=())
+        # self.t_move = threading.Thread(target=self.move, args=())
         self.__running = False
     
     @property
@@ -38,7 +38,7 @@ class DroneController:
         return self.__robot.position
 
     def move(self):
-        while self.__running:
+        # while self.__running:
 
             sign = 0
             if self.__counter > 0:
@@ -79,11 +79,11 @@ class DroneController:
             y = self.__speed_y * self.__delta_t
             self.__robot.move(x, y)
 
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
     def stop(self):
         self.__running = False
-        self.t_move.join()
+        # self.t_move.join()
 
 
     def yaw(self, angle):
@@ -100,7 +100,7 @@ class DroneController:
             self.__pitch = self.__min_rotate
         if self.__pitch > self.__max_rotate:
             self.__pitch = self.__max_rotate
-        
+
     def roll(self, angle):
 
         self.__roll = angle
@@ -113,12 +113,12 @@ class DroneController:
         time.sleep(1)
         self.__running = True
         self.__robot.set_altitude(1)
-        self.t_move.start()
+        # self.t_move.start()
 
     def land(self):
         time.sleep(1)
         self.__robot.set_altitude(0)
-        self.stop()
+        # self.stop()
 
     def battery_level(self):
         return self.__sensor_view.battery

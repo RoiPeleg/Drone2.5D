@@ -75,6 +75,7 @@ def main():
     # make first initialization
     def clock_fun():
         while threading.main_thread().isAlive():
+            
             # lidar sensor:
             sensor.scan(robot.position, robot.rotation, world)
             sensors_view.take_measurements(odometry, sensor)
@@ -93,7 +94,8 @@ def main():
 
             # gyro sensor:
             sensors_view.take_measurements_gyro(odometry)
-    
+
+            controller.move()
             time.sleep(0.1)
 
             if clock.current_time_to_live <= 0:

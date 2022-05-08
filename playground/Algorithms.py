@@ -141,11 +141,11 @@ class Algorithms:
         self.disable_roll = False
 
         #PIDs
-        self.PID_p = PID(1.5,0.004,0.04, disired_distance=0)
+        self.PID_p = PID(1.5,0.004,0.04, disired_distance=0.3)
         self.PID_r = PID(3.0,3.0,2.0)
         
         #tunnel PIDs
-        self.PID_p_t = PID(1.0,0.06,0.6,disired_distance=0)
+        self.PID_p_t = PID(1.0,0.06,0.6,disired_distance=0.3)
         self.PID_r_t = PID(2.0,2.0,2.0/1.5,disired_distance=0.3)
 
         # keeps track of itersactions passed
