@@ -2,6 +2,9 @@ import numpy as np
 
 from playground.environment.body import Body
 
+np.random.seed(42)
+import random 
+random.seed(42)
 
 class Odometry(Body):
     def __init__(self, filename, mu, sigma, delta_t=0.1):

@@ -7,6 +7,7 @@ import numpy as np
 from skimage.draw import line_aa
 
 from playground.utils.transform import to_screen_coords, make_direction, transform_points, create_rotation_matrix_yx
+np.random.seed(42)
 
 class Lidar:
     def __init__(self, dist_range, fov, mu, sigma):
