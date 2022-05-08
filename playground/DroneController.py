@@ -114,7 +114,6 @@ class DroneController:
         self.__running = True
         self.__robot.set_altitude(1)
         self.t_move.start()
-      
 
     def land(self):
         time.sleep(1)

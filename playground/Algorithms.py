@@ -272,10 +272,11 @@ class Algorithms:
         home = [(home[0] + home[3])/2.0, (home[1] + home[2])/2.0, (home[0] + home[3])/2.0, (home[1] + home[2])/2.0] 
         homes = [home, np.array([home[1],home[2],home[3],home[0]]), home[::-1], np.array([home[3],home[0],home[1],home[2]])]
         
-        intersections = []
+        #intersections = []
         is_turnning = False
         direction = 'front'
         self.local_start = self.local_pos.copy()
+        angle = 0
         while self.__auto and self.__data["battery"] > 60:
             self.sample_data()
             if is_intersection(current, prev) != None:
@@ -285,15 +286,17 @@ class Algorithms:
                 self.Emengercy()
             elif current[0] < self.front_tresh:
                 self.RotateCCW()
+                angle += 10
             elif (current[3] - prev[3])/self.__delta_t > epsilon: #and front > front_tresh*1.5:
                 self.RotateCW()
+                angle += 10
             elif current[1] < self.tunnel_tresh and current[3] < self.tunnel_tresh:
                 self.Tunnel(current[1], current[3])
             elif current[3] > self.right_far_tresh:
                 self.RotateCW_90()
+                angle -= 90
             else:
                 self.Fly_Forward()
-
             prev = current.copy()
             current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
             
@@ -301,7 +304,7 @@ class Algorithms:
             if is_turnning and direction == None:
                 is_turnning = False
                 t = turn(prev, current)
-                intersections.append((current, t))
+                self.intersections.append((current, t))
                 self.to_draw.append(self.__controller.position)
 
             time.sleep(self.__delta_t)
