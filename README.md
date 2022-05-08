@@ -4,14 +4,15 @@ Educational 2D SLAM implementation based on ICP and Pose Graph
 ![slamgui](https://github.com/Kolkir/slam-playground/blob/main/assets/slam.gif)
 
 Our simulator is based on an [open source simulator](https://github.com/Kolkir/slam-playground.git) with some improvements:
-1. Add some sensors:
+1. Add some sensors (updating in 10 hz):
   - 4 lidars (front, left, back , right) in order to calculate distance between the drone and the walls arround it.
   - 2 lidars in order to calcolate it hight and the distance betwwen the drone and the roof.
-  - optical flow.
-  - gyro.
-  - battery.
-  - pitch, roll, yaw.
+  - Optical Flow.
+  - Gyro.
+  - Battery.
+  - Pitch, Roll, Yaw.
 2. Add vectorial movement (in both x and y axis).
+3. Create simple API in order to comunicate with the simulation and get the sensors data.
 
 
 Our main movement algorithm can be found [here](https://github.com/RoiPeleg/Drone2.5D/blob/main/playground/Algorithms.py).
@@ -22,8 +23,8 @@ We did the following improvements:
 1. Modify the PID controller to four different little pids:
   - Two for the pitch angle (forward/backward) for a flyforward state and for a tunnel state.
   - Two for the roll angle (left/right) for a flyforward state and for a tunnel state.
-3. Identify large derivative in the sides in order to identify intersections and "point of interset" (POI).
-4. Make little yaw adjustments in order to fix noise.
+2. Identify large derivative in the sides in order to identify intersections and "point of interset" (POI).
+3. Make little yaw adjustments in order to fix noise.
 
 ### How to use:
 
