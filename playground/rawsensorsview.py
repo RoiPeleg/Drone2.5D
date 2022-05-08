@@ -3,7 +3,7 @@ import pygame
 
 from skimage.draw import line_aa
 from playground.utils.transform import to_screen_coords, transform_points
-
+np.random.seed(42)
 
 class RawSensorsView:
     def __init__(self, world_h, world_w, world_z):

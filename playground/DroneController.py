@@ -47,18 +47,12 @@ class DroneController:
                 elif self.__yaw > 0:
                     sign = 1
 
-                # print("yaw: ", self.__yaw)
-                # print("counter: ", self.__counter)
-
                 self.__robot.rotate(sign * self.__angle_inc * self.__delta_t)
                 self.__counter -= 1
                 self.__yaw -= sign * self.__angle_inc * self.__delta_t
 
             w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
-            
-            # print("w_speed_x: ", w_speed_x)
-            # print("self.__speed_x: ", self.__speed_x)
-            
+
             if self.__speed_x < round(w_speed_x):
                 self.__speed_x = round(self.__speed_x + self.__acceleration_x * self.__delta_t)
             elif self.__speed_x > round(w_speed_x):
@@ -69,7 +63,6 @@ class DroneController:
             elif self.__speed_x < self.__min_speed:
                 self.__speed_x = self.__min_speed
 
-            # w_speed_y = math.sin(math.radians(self.__roll) * 9) * self.__max_speed
             w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
             if self.__speed_y < round(w_speed_y):
@@ -84,9 +77,7 @@ class DroneController:
             
             x = self.__speed_x * self.__delta_t
             y = self.__speed_y * self.__delta_t
-            # y = 0
             self.__robot.move(x, y)
-            # print("x: %f, y: %f" % (x, y))
 
             time.sleep(0.1)
 

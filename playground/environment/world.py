@@ -4,6 +4,7 @@ from PIL import Image
 from hilbertcurve.hilbertcurve import HilbertCurve
 import numpy as np
 import pygame
+np.random.seed(42)
 
 
 class World:
