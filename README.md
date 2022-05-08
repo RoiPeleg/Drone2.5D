@@ -21,9 +21,9 @@ Our algorithm is based on the algorithm in the paper "Vision-Less Sensing for Au
 
 We did the following improvements:
 1. Modify the PID controller to four different little pids:
-  - Two for the pitch angle (forward/backward) for a flyforward state and for a tunnel state.
-  - Two for the roll angle (left/right) for a flyforward state and for a tunnel state.
-2. Identify large derivative in the sides in order to identify intersections and "point of interset" (POI).
+  - Two for the pitch and roll angle for a flyforward state in order to increase the drone speed.
+  - Two for the pitch and roll angle for a tunnel state in order to get more smooth movements.
+2. Identify large derivative in the sides in order to identify intersections and "Point Of Interset" (POI).
 3. Make little yaw adjustments in order to fix noise.
 
 ### How to use:
