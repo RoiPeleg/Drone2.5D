@@ -137,8 +137,10 @@ class Algorithms:
         self.local_start = None
         self.disable_roll = False
 
+        self.__last_angle = 0
         self.__cum_rotatation = 0 # calc from gyro
         self.__local_pose = np.array([0.0, 0.0]) # calc from opticalflow and gyro
+        self.__rotation_matrix = np.identity(3)
 
 
         #PIDs
@@ -178,7 +180,20 @@ class Algorithms:
         self.__t_id.join()
     
     def sample_data(self):
-        self.__data = self.__controller.sensors_data()            
+        self.__data = self.__controller.sensors_data()
+        
+        tr_mat = create_rotation_matrix_yx(self.__last_angle)
+        self.__rotation_matrix = np.matmul(self.__rotation_matrix, tr_mat)
+        # x axis
+        direction = make_direction(self.__rotation_matrix)
+        pos = self.__local_pose.copy()
+        pos += direction * self.__data['v_x']
+        # y axis
+        direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
+        pos += (-1) * direction * self.__data['v_y']
+
+        self.__local_pose = pos
+        self.__cum_rotatation = self.__cum_rotatation % 360   
     
     @property
     def state(self):
@@ -222,29 +237,30 @@ class Algorithms:
 
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
-        angle = 10
-        self.__controller.yaw(angle)
-        self.__cum_rotatation += angle
+        self.__last_angle = 10
+        self.__controller.yaw(self.__last_angle)
+        self.__cum_rotatation += self.__last_angle
     
     def RotateCW(self):
         self.__state = 'Rotate CW'
-        angle = -10
-        self.__controller.yaw(angle)
-        self.__cum_rotatation += angle
+        self.__last_angle = -10
+        self.__controller.yaw(self.__last_angle)
+        self.__cum_rotatation += self.__last_angle
 
     def RotateCW_90(self):
         self.__state = 'Rotate 90CW'
-        angle = -90
-        self.__controller.yaw(angle)
-        self.__cum_rotatation += angle
+        self.__last_angle = -90
+        self.__controller.yaw(self.__last_angle)
+        self.__cum_rotatation += self.__last_angle
     
     def RotateCCW_90(self):
         self.__state = 'Rotate 90CCW'
-        angle = 90
-        self.__controller.yaw(angle)
-        self.__cum_rotatation += angle
+        self.__last_angle = 90
+        self.__controller.yaw(self.__last_angle)
+        self.__cum_rotatation += self.__last_angle 
 
     def rotate180(self):
+        self.__state = 'Rotate 180'
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         current[current == np.inf] = 3.0
         current = norm(current)
@@ -265,7 +281,6 @@ class Algorithms:
         epsilon = 0.28
         
         self.__controller.takeoff()
-        self.sample_data()
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         prev = current.copy()
 
@@ -278,7 +293,6 @@ class Algorithms:
         is_turnning = False
         direction = 'front'
         while self.__auto and self.__data["battery"] > 60:
-            self.sample_data()
             if is_intersection(current, prev) != None:
                 is_turnning = True
 
@@ -307,6 +321,9 @@ class Algorithms:
                 self.intersections.append((norm_current, t))
                 self.to_draw.append(self.__controller.position)
 
+            print("local_pos: ", self.__local_pose)
+            # print("cum_rotatation: ", self.__cum_rotatation)
+
             time.sleep(self.__delta_t)
         
         # drone go home
@@ -319,6 +336,9 @@ class Algorithms:
         self.__controller.pitch(0)
         self.__controller.roll(0)
         
+        opt = [self.__data["v_x"], self.__data["v_y"]]
+        while min(opt) > 0:
+            opt = [self.__data["v_x"], self.__data["v_y"]]
         # rotate 180 degrees
         if 80 < self.__cum_rotatation < 100:
             self.rotate180()
@@ -329,11 +349,11 @@ class Algorithms:
    # retuns the mathcing the given intersection
     def match_intersection(self,current):
         inters_dist = [rmse(current, v[0]) for v in self.intersections]
-        print(inters_dist)
-        return np.argmin(inters_dist)
+        if len(inters_dist) > 0:
+            return np.argmin(inters_dist)
+        return None
 
     def GoHome(self, homes):
-        self.sample_data()
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])        
         prev = current.copy()
 
@@ -345,9 +365,8 @@ class Algorithms:
         is_turnning = False
         direction = None
         
-        epsilon = 0.3
+        epsilon = 0.28
         while self.__auto and self.__data["battery"] > 0 and min(rmses) > 0.1:
-            self.sample_data()
             if current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif current[0] < self.front_tresh:
@@ -370,7 +389,9 @@ class Algorithms:
                 norm_current = current.copy()
                 norm_current[norm_current == np.inf] = 3.0
                 norm_current = norm(norm_current)
-                direction = self.intersections[self.match_intersection(norm_current)][1]
+                index = self.match_intersection(norm_current)
+                if index != None:
+                    direction = self.intersections[index][1]
                 
                 if direction == 'right':
                     self.RotateCCW_90()
