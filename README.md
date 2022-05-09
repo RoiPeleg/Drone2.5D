@@ -12,7 +12,8 @@ Our simulator is based on an [open source simulator](https://github.com/Kolkir/s
   - Battery.
   - Pitch, Roll, Yaw.
 2. Add vectorial movement (in both x and y axis).
-3. Create simple API in order to comunicate with the simulation and get the sensors data.
+3. Improve GUI: merge between the sensor view map and the real word map.
+4. Create simple API in order to comunicate with the simulation and get the sensors data.
 
 
 Our main movement algorithm can be found [here](https://github.com/RoiPeleg/Drone2.5D/blob/main/playground/Algorithms.py).
