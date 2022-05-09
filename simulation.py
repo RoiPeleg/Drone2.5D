@@ -9,8 +9,6 @@ warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 warnings.filterwarnings(action='ignore', message='invalid value encountered in double_scalars')
 
 import playground.slam.frontend
-# import playground.slam.backend
-# import playground.slam.gtsambackend
 from playground.rawsensorsview import RawSensorsView
 from playground.robot import Robot
 from playground.odometry import Odometry
@@ -19,10 +17,10 @@ from playground.environment.world import World
 from playground.DroneController import DroneController
 from playground.Algorithms import Algorithms
 
-
 import time
 import numpy as np
 np.random.seed(42)
+
 class SimulationMode(Enum):
     RAW_SENSORS = 1,
     ICP_ADJUSTMENT = 2        
@@ -62,10 +60,11 @@ def main():
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller, odometry, mode="bat")
 
-    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
     
     # Initialize rendering
-    screen = pygame.display.set_mode([world.width * 2, world.height])
+    screen = pygame.display.set_mode([world.width, world.height])
     font = pygame.font.Font(pygame.font.get_default_font(), 18)
     
     # Robot movement configuration
@@ -107,6 +106,7 @@ def main():
     running = True
     t_clock.start()
     algo.run()
+    robot.rotate(180)
     while running:
         try:
             for event in pygame.event.get():
@@ -123,10 +123,10 @@ def main():
                     if event.key == pygame.K_DOWN:
                         robot.move(-moving_step)
 
-            world.draw(screen)
+            world.draw(screen, sensors_view.map)
             robot.draw(screen, world.height, world.width)
             algo.draw(screen, world.height, world.width)
-            sensors_view.draw(screen, offset=world.width)
+            # sensors_view.draw(screen, offset=world.width)
             
             data_sensors = controller.sensors_data()
             

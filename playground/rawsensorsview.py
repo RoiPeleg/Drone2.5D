@@ -123,6 +123,10 @@ class RawSensorsView:
     def dis_from_roof(self):
         return self.__dis_from_roof
 
+    @property
+    def map(self):
+        return self.__map
+        
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)
         surf = pygame.surfarray.make_surface(transposed_map)

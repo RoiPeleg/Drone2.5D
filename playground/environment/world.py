@@ -45,12 +45,11 @@ class World:
     def max_z(self):
         return self.__max_z
 
-    def draw(self, screen):
-        transposed_map = np.transpose(self.__map)
+    def draw(self, screen, sensor_map):
+        transposed_map = np.transpose(0.5 * self.__map.copy() + 0.5 * sensor_map.copy())
         surf = pygame.surfarray.make_surface(transposed_map)
-        #surf = pygame.transform.scale(surf, (self.width, self.height)) 
+        surf = pygame.transform.scale(surf, (self.width, self.height)) 
         screen.blit(surf, (0, 0))
-        # pygame.draw.circle(screen, color=(255, 0, 0), center=(self.__width // 2, self.__height // 2), radius=10)
 
     def allow_move(self, pos, size):
         obstacles_coords = self.get_obstacles_in_circle(pos, size)
