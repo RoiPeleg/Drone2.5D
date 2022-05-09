@@ -12,14 +12,11 @@ class Odometry(Body):
         self.__mu = mu
         self.__sigma = sigma
         self.__angle = 0
-        self.__gyro = 0
-        self.__delta_t = delta_t
-
+    
     def track_rotate(self, angle):
         noise = np.random.normal(self.__mu, self.__sigma)
         self.rotate(angle + noise)
-        self.__gyro = (angle + noise) * self.__delta_t
-        self.__angle += angle + noise
+        self.__angle = angle + noise
 
     def track_move(self, dist_x, dist_y):
         noise = np.random.normal(self.__mu, self.__sigma)
@@ -28,7 +25,7 @@ class Odometry(Body):
     def track_altitude(self, alt):
         noise = np.random.normal(self.__mu, self.__sigma/100)
         self.set_altitude(alt + noise)
-
+    
     @property
-    def gyro(self):
-        return self.__gyro 
+    def angle(self):
+        return self.__angle

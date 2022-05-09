@@ -16,6 +16,7 @@ class RawSensorsView:
         self.__opticalflow = [0, 0]
         self.__gyro = 0
         self.__battery = 100
+        self.__prev_angle = 0
 
         self.__drone_height = 0
         self.__dis_from_roof = self.__z
@@ -40,7 +41,9 @@ class RawSensorsView:
         self.__prev_pos_real = odometry.position
         
     def take_measurements_gyro(self, odometry):
-        self.__gyro = odometry.gyro
+        current_ang = odometry.angle
+        self.__gyro = current_ang - self.__prev_angle
+        self.__prev_angle = current_ang
         
     # mesures lidar distances
     def take_measurements(self, odometry, sensor):

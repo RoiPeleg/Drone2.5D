@@ -58,7 +58,7 @@ def main():
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
-    algo = Algorithms(controller, odometry, mode="bat")
+    algo = Algorithms(controller, mode="bat")
 
     # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
     clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
@@ -74,6 +74,9 @@ def main():
     # make first initialization
     def clock_fun():
         while threading.main_thread().isAlive():
+            
+            # gyro sensor:
+            sensors_view.take_measurements_gyro(odometry)
             
             # lidar sensor:
             sensor.scan(robot.position, robot.rotation, world)
@@ -91,8 +94,7 @@ def main():
             # barometer sensor:
             sensors_view.take_measurements_barometer(odometry)
 
-            # gyro sensor:
-            sensors_view.take_measurements_gyro(odometry)
+
 
             controller.move()
             time.sleep(0.1)

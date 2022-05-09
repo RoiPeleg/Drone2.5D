@@ -67,7 +67,7 @@ def is_intersection(dis, dis_prev, delta_t=0.1):
 
     return False
 
-def turn(prev,current):
+def turn(prev ,current):
     threshold = 2.5
     cords = np.argwhere(prev > threshold)
     for c in cords:
@@ -124,24 +124,25 @@ class PID():
         return self.__intgral
     
 class Algorithms:
-    def __init__(self, controller, odometry, mode="random", delta_t=0.1):
+    def __init__(self, controller, mode="random", delta_t=0.1):
         self.__mode = mode
         self.__auto = False
         self.__state = None
         
         self.__t_id = None
-        self.__data_id = None
-        self.__data = controller.sensors_data()
         
         self.__controller = controller
-        self.__odometry = odometry
         self.__delta_t = delta_t
         self.to_draw = []
         self.local_start = None
         self.disable_roll = False
 
+        self.__cum_rotatation = 0 # calc from gyro
+        self.__local_pose = np.array([0.0, 0.0]) # calc from opticalflow and gyro
+
+
         #PIDs
-        self.PID_p = PID(1.5,0.004,0.04, disired_distance=0.3)
+        self.PID_p = PID(1.5,0.04,0.04, disired_distance=0.3)
         self.PID_r = PID(3.0,3.0,2.0)
         
         #tunnel PIDs
@@ -169,21 +170,15 @@ class Algorithms:
             self.__t_id = threading.Thread(target=self.random_walk, args=())
         if self.__mode == "bat":
             self.__t_id = threading.Thread(target=self.BAT, args=())
-            
-        # self.__data_id = threading.Thread(target=self.sample_data, args=())
-        # self.__data_id.start()
+
         self.__t_id.start()
 
     def stop(self):
         self.__auto = False
         self.__t_id.join()
-        # self.__data_id.join()
     
-    def sample_data(self, delta_t=0.1):
-        # while self.__auto:
+    def sample_data(self):
         self.__data = self.__controller.sensors_data()            
-        self.local_pos = self.__odometry.position
-        # time.sleep(delta_t)
     
     @property
     def state(self):
@@ -227,19 +222,27 @@ class Algorithms:
 
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
-        self.__controller.yaw(10)
+        angle = 10
+        self.__controller.yaw(angle)
+        self.__cum_rotatation += angle
     
     def RotateCW(self):
         self.__state = 'Rotate CW'
-        self.__controller.yaw(-10)
+        angle = -10
+        self.__controller.yaw(angle)
+        self.__cum_rotatation += angle
 
     def RotateCW_90(self):
         self.__state = 'Rotate 90CW'
-        self.__controller.yaw(-90)
+        angle = -90
+        self.__controller.yaw(angle)
+        self.__cum_rotatation += angle
     
     def RotateCCW_90(self):
         self.__state = 'Rotate 90CCW'
-        self.__controller.yaw(90)
+        angle = 90
+        self.__controller.yaw(angle)
+        self.__cum_rotatation += angle
 
     def rotate180(self):
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
@@ -272,11 +275,8 @@ class Algorithms:
         home = [(home[0] + home[3])/2.0, (home[1] + home[2])/2.0, (home[0] + home[3])/2.0, (home[1] + home[2])/2.0] 
         homes = [home, np.array([home[1],home[2],home[3],home[0]]), home[::-1], np.array([home[3],home[0],home[1],home[2]])]
         
-        #intersections = []
         is_turnning = False
         direction = 'front'
-        self.local_start = self.local_pos.copy()
-        angle = 0
         while self.__auto and self.__data["battery"] > 60:
             self.sample_data()
             if is_intersection(current, prev) != None:
@@ -286,15 +286,12 @@ class Algorithms:
                 self.Emengercy()
             elif current[0] < self.front_tresh:
                 self.RotateCCW()
-                angle += 10
             elif (current[3] - prev[3])/self.__delta_t > epsilon: #and front > front_tresh*1.5:
                 self.RotateCW()
-                angle += 10
             elif current[1] < self.tunnel_tresh and current[3] < self.tunnel_tresh:
                 self.Tunnel(current[1], current[3])
             elif current[3] > self.right_far_tresh:
                 self.RotateCW_90()
-                angle -= 90
             else:
                 self.Fly_Forward()
             prev = current.copy()
@@ -304,7 +301,10 @@ class Algorithms:
             if is_turnning and direction == None:
                 is_turnning = False
                 t = turn(prev, current)
-                self.intersections.append((current, t))
+                norm_current = current.copy()
+                norm_current[norm_current == np.inf] = 3.0
+                norm_current = norm(norm_current)
+                self.intersections.append((norm_current, t))
                 self.to_draw.append(self.__controller.position)
 
             time.sleep(self.__delta_t)
@@ -320,15 +320,15 @@ class Algorithms:
         self.__controller.roll(0)
         
         # rotate 180 degrees
-        # if self.local_pos[1] > self.local_start[1]:
-        #     self.rotate180()
+        if 80 < self.__cum_rotatation < 100:
+            self.rotate180()
         
         # navigate home
         self.GoHome(homes)
 
    # retuns the mathcing the given intersection
     def match_intersection(self,current):
-        inters_dist = [rmse(current, v) for v in self.intersections]
+        inters_dist = [rmse(current, v[0]) for v in self.intersections]
         print(inters_dist)
         return np.argmin(inters_dist)
 
@@ -364,28 +364,26 @@ class Algorithms:
             prev = current.copy()
 
             current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
+            
             if is_intersection(current,prev) and not is_turnning:
                 is_turnning = True
                 norm_current = current.copy()
                 norm_current[norm_current == np.inf] = 3.0
                 norm_current = norm(norm_current)
-                direction = self.intersections[self.match_intersection(current)][1]
+                direction = self.intersections[self.match_intersection(norm_current)][1]
+                
                 if direction == 'right':
                     self.RotateCCW_90()
                 elif direction == 'left':
                     self.RotateCW_90()
             elif done_turnning(direction, current):                    
                 is_turnning = False
-                # self.intersections.pop
 
             norm_current = current.copy()
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
-            rmses = [rmse(norm_current, v) for v in homes]
-
-            # print("min(rmses): ", min(rmses))
-            # print("current: ", current)
-
+            rmses = [rmse(norm_current, v[0]) for v in homes]
+            
             time.sleep(self.__delta_t)
 
         self.__controller.land()
