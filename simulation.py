@@ -46,7 +46,7 @@ def main():
     pygame.display.set_caption('BAT drone simulation')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename', help='Environmental map filename')
+    parser.add_argument('filename', help='Environmental map filename', nargs='?', const=1, default='assets/p11.png')
     args = parser.parse_args()
 
     # Create simulation objects
@@ -60,8 +60,8 @@ def main():
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller, mode="bat")
 
-    # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
+    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    # clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width, world.height])

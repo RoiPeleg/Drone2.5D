@@ -88,7 +88,7 @@ class PID():
         self.Ki = Ki
         self.Kd = Kd
 
-        self.last_error = 0
+        self.__last_error = 0
         self.__intgral = 0
 
         self.delta_t = delta_t
@@ -103,10 +103,12 @@ class PID():
             # if front is inf the pid controller get crazy
             error = self.__max_measurements - self.__disired_distance
         self.__intgral += error * self.delta_t
+        if error == 0:
+            self.__intgral = 0
         if self.__intgral > 15:
             self.__intgral /= 10       
-        u_t = self.Kp * error + self.Ki * self.intgral + self.Kd * (error - self.last_error) / self.delta_t
-        self.last_error = error
+        u_t = self.Kp * error + self.Ki * self.__intgral + self.Kd * (error - self.__last_error) / self.delta_t
+        self.__last_error = error
 
         if u_t < self.__min_rotate:
             u_t = self.__min_rotate
@@ -118,10 +120,6 @@ class PID():
     def reset(self):
         self.last_error = 0
         self.__intgral = 0
-
-    @property
-    def intgral(self):
-        return self.__intgral
     
 class Algorithms:
     def __init__(self, controller, mode="random", delta_t=0.1):
@@ -130,6 +128,7 @@ class Algorithms:
         self.__state = None
         
         self.__t_id = None
+        self.__data = None
         
         self.__controller = controller
         self.__delta_t = delta_t
@@ -143,19 +142,19 @@ class Algorithms:
 
 
         #PIDs
-        self.PID_p = PID(1.9,0.04,0.06,disired_distance=0.0)
-        self.PID_r = PID(3.0,3.0,2.0,disired_distance=0.3)
+        self.PID_p = PID(1.5,0.004,0.4, disired_distance=0.4)
+        self.PID_r = PID(4,4,2)
         
         #tunnel PIDs
-        self.PID_p_t = PID(1.5,0.06,0.6,disired_distance=0.0)
-        self.PID_r_t = PID(2.0,2.0,2.0/1.5,disired_distance=0.3)
+        self.PID_p_t = PID(1,0.006,0.6, disired_distance=0.3)
+        self.PID_r_t = PID(3,3,1.5, disired_distance=0.3)
 
         # keeps track of itersactions passed
         self.intersections = []
         
         # BAT tresholds
         self.emengercy_tresh = 0.3
-        self.tunnel_tresh = 0.75
+        self.tunnel_tresh = 0.7
         self.front_tresh = 1
         self.right_far_tresh = 2.5
         self.left_far_tresh = 2.5
@@ -214,7 +213,6 @@ class Algorithms:
         self.__controller.pitch(-1)
         
     def Tunnel(self, left, right, wall_align = 'd_right'):
-                # print(self.PID_p.intgral)
         self.__state = 'Tunnel'
         u_t_p_t = self.PID_p_t.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p_t)        
@@ -227,12 +225,18 @@ class Algorithms:
         self.__state = 'Forward'
         u_t_p = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p)
+
+        # print("u_t_p: ", u_t_p)
+
         sign = 1
         if wall_align == 'd_left':
             sign = -1
         
-        u_t_r = sign * self.PID_r.compute(self.__data[wall_align])
+        u_t_r = sign * self.PID_r.compute(self.__data[wall_align])        
         self.__controller.roll(u_t_r)
+
+        # print("u_t_r: ", u_t_r)
+
 
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
@@ -283,6 +287,7 @@ class Algorithms:
         epsilon = 0.28
         
         self.__controller.takeoff()
+        self.sample_data()
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         prev = current.copy()
 
@@ -369,7 +374,7 @@ class Algorithms:
         direction = None
         
         epsilon = 0.28
-        while self.__auto and self.__data["battery"] > 0 and min(rmses) > 0.1:
+        while self.__auto and self.__data["battery"] > 0 and min(rmses) > 0.2:
             if current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif current[0] < self.front_tresh:
@@ -408,6 +413,11 @@ class Algorithms:
             norm_current = norm(norm_current)
             rmses = [rmse(norm_current, v[0]) for v in homes]
             #print("local_pos: ", self.__local_pose)
+            print("min(rmses): ", min(rmses))
+
             time.sleep(self.__delta_t)
+
+        if min(rmses) > 0.2:
+            print("Drone return home")
 
         self.__controller.land()

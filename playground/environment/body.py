@@ -40,14 +40,21 @@ class Body:
         self.__pos = self.try_move(dist_x, dist_y)
 
     def try_move(self, dist_x, dist_y):
+        # print("dist_x: {}, dist_y: {}".format(dist_x, dist_y))
+        # print("pos: ", self.__pos)
         # x axis
         direction = make_direction(self.__rotation_matrix)
         pos = self.__pos.copy()
         pos += direction * dist_x
 
+        # print("pos_x: ", pos)
+
         # y axis
         direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
         pos += (-1) * direction * dist_y
+
+        # print("pos_xy: ", pos)
+        # print("-------------------------------")
         return pos
 
     def set_altitude(self, alt):

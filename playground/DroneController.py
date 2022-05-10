@@ -40,45 +40,49 @@ class DroneController:
     def move(self):
         # while self.__running:
 
-            sign = 0
-            if self.__counter > 0:
-                if self.__yaw < 0:
-                    sign = -1
-                elif self.__yaw > 0:
-                    sign = 1
+        sign = 0
+        if self.__counter > 0:
+            if self.__yaw < 0:
+                sign = -1
+            elif self.__yaw > 0:
+                sign = 1
 
-                self.__robot.rotate(sign * self.__angle_inc) #* self.__delta_t)
-                self.__counter -= 1
-                self.__yaw -= sign * self.__angle_inc  #* self.__delta_t
+            self.__robot.rotate(sign * self.__angle_inc) #* self.__delta_t)
+            self.__counter -= 1
+            self.__yaw -= sign * self.__angle_inc  #* self.__delta_t
 
-            w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
+        w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
-            if self.__speed_x < round(w_speed_x):
-                self.__speed_x = round(self.__speed_x + self.__acceleration_x * self.__delta_t)
-            elif self.__speed_x > round(w_speed_x):
-                self.__speed_x = round(self.__speed_x - self.__acceleration_x * self.__delta_t)
-                
-            if self.__speed_x > self.__max_speed:
-                self.__speed_x = self.__max_speed
-            elif self.__speed_x < self.__min_speed:
-                self.__speed_x = self.__min_speed
-
-            w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
-
-            if self.__speed_y < round(w_speed_y):
-                self.__speed_y = round(self.__speed_y + self.__acceleration_y * self.__delta_t)
-            elif self.__speed_y > round(w_speed_y):
-                self.__speed_y = round(self.__speed_y - self.__acceleration_y * self.__delta_t)
-
-            if self.__speed_y > self.__max_speed:
-                self.__speed_y = self.__max_speed
-            elif self.__speed_y < self.__min_speed:
-                self.__speed_y = self.__min_speed
+        if self.__speed_x < round(w_speed_x):
+            self.__speed_x = round(self.__speed_x + self.__acceleration_x * self.__delta_t)
+        elif self.__speed_x > round(w_speed_x):
+            self.__speed_x = round(self.__speed_x - self.__acceleration_x * self.__delta_t)
             
-            x = self.__speed_x * self.__delta_t
-            y = self.__speed_y * self.__delta_t
-            print(self.__speed_x,self.__speed_y)
-            self.__robot.move(x, y)
+        if self.__speed_x > self.__max_speed:
+            self.__speed_x = self.__max_speed
+        elif self.__speed_x < self.__min_speed:
+            self.__speed_x = self.__min_speed
+
+        w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
+
+        if self.__speed_y < round(w_speed_y):
+            self.__speed_y = round(self.__speed_y + self.__acceleration_y * self.__delta_t)
+        elif self.__speed_y > round(w_speed_y):
+            self.__speed_y = round(self.__speed_y - self.__acceleration_y * self.__delta_t)
+
+        if self.__speed_y > self.__max_speed:
+            self.__speed_y = self.__max_speed
+        elif self.__speed_y < self.__min_speed:
+            self.__speed_y = self.__min_speed
+        
+        x = self.__speed_x * self.__delta_t
+        y = self.__speed_y * self.__delta_t
+        # print("___________________________________")
+        # print("pitch: ", self.__pitch)
+        # print("roll: ", self.__roll)
+        # print("w_speed_x: {}, w_speed_y: {}".format(w_speed_x, w_speed_y))
+        # print("self.__speed_x: {} , self.__speed_y: {}".format(self.__speed_x,self.__speed_y))
+        self.__robot.move(x, y)
 
             # time.sleep(0.1)
 
