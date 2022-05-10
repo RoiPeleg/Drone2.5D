@@ -135,20 +135,19 @@ class Algorithms:
         self.__delta_t = delta_t
         self.to_draw = []
         self.local_start = None
-        self.disable_roll = False
 
-        self.__last_angle = 0
+        self.__last_angle = 180
         self.__cum_rotatation = 0 # calc from gyro
         self.__local_pose = np.array([0.0, 0.0]) # calc from opticalflow and gyro
         self.__rotation_matrix = np.identity(3)
 
 
         #PIDs
-        self.PID_p = PID(1.5,0.04,0.04, disired_distance=0.3)
-        self.PID_r = PID(3.0,3.0,2.0)
+        self.PID_p = PID(1.9,0.04,0.06,disired_distance=0.0)
+        self.PID_r = PID(3.0,3.0,2.0,disired_distance=0.3)
         
         #tunnel PIDs
-        self.PID_p_t = PID(1.0,0.06,0.6,disired_distance=0.3)
+        self.PID_p_t = PID(1.5,0.06,0.6,disired_distance=0.0)
         self.PID_r_t = PID(2.0,2.0,2.0/1.5,disired_distance=0.3)
 
         # keeps track of itersactions passed
@@ -274,8 +273,11 @@ class Algorithms:
             time.sleep(self.__delta_t)
 
         min_index_deg = rmses.index(min(rmses))
+        ang = 0
         for _ in range(min_index_deg):
             self.RotateCCW()
+            ang += 10
+        self.__last_angle -= ang
             
     def BAT(self):
         epsilon = 0.28
@@ -321,7 +323,7 @@ class Algorithms:
                 self.intersections.append((norm_current, t))
                 self.to_draw.append(self.__controller.position)
 
-            print("local_pos: ", self.__local_pose)
+            #print("local_pos: ", self.__local_pose)
             # print("cum_rotatation: ", self.__cum_rotatation)
 
             time.sleep(self.__delta_t)
@@ -339,9 +341,10 @@ class Algorithms:
         opt = [self.__data["v_x"], self.__data["v_y"]]
         while min(opt) > 0:
             opt = [self.__data["v_x"], self.__data["v_y"]]
+
         # rotate 180 degrees
-        if 80 < self.__cum_rotatation < 100:
-            self.rotate180()
+        #if 80 < self.__cum_rotatation < 100:
+        self.rotate180()
         
         # navigate home
         self.GoHome(homes)
@@ -404,7 +407,7 @@ class Algorithms:
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
             rmses = [rmse(norm_current, v[0]) for v in homes]
-            
+            #print("local_pos: ", self.__local_pose)
             time.sleep(self.__delta_t)
 
         self.__controller.land()

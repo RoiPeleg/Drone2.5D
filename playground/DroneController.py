@@ -23,7 +23,7 @@ class DroneController:
         self.__speed_y = 0
         self.__acceleration_x = 1 * 100 / self.__resolution
         self.__acceleration_y = 1 * 100 / self.__resolution
-        self.__angle_inc = delta_t * 1000
+        self.__angle_inc = delta_t * 100
 
         self.__pitch = 0 
         self.__roll = 0
@@ -47,9 +47,9 @@ class DroneController:
                 elif self.__yaw > 0:
                     sign = 1
 
-                self.__robot.rotate(sign * self.__angle_inc * self.__delta_t)
+                self.__robot.rotate(sign * self.__angle_inc) #* self.__delta_t)
                 self.__counter -= 1
-                self.__yaw -= sign * self.__angle_inc * self.__delta_t
+                self.__yaw -= sign * self.__angle_inc  #* self.__delta_t
 
             w_speed_x = (self.__pitch - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
@@ -77,6 +77,7 @@ class DroneController:
             
             x = self.__speed_x * self.__delta_t
             y = self.__speed_y * self.__delta_t
+            print(self.__speed_x,self.__speed_y)
             self.__robot.move(x, y)
 
             # time.sleep(0.1)
