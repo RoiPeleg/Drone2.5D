@@ -89,7 +89,7 @@ class PID():
         self.Kd = Kd
 
         self.__last_error = 0
-        self.__intgral = 0
+        self.__integral = 0
 
         self.delta_t = delta_t
         self.__max_measurements = max_measurements
@@ -102,12 +102,12 @@ class PID():
         if np.isinf(error):
             # if front is inf the pid controller get crazy
             error = self.__max_measurements - self.__disired_distance
-        self.__intgral += error * self.delta_t
+        self.__integral += error * self.delta_t
         if error == 0:
-            self.__intgral = 0
-        if self.__intgral > 15:
-            self.__intgral /= 10       
-        u_t = self.Kp * error + self.Ki * self.__intgral + self.Kd * (error - self.__last_error) / self.delta_t
+            self.__integral = 0
+        if self.__integral > 15:
+            self.__integral /= 10       
+        u_t = self.Kp * error + self.Ki * self.__integral + self.Kd * (error - self.__last_error) / self.delta_t
         self.__last_error = error
 
         if u_t < self.__min_rotate:
@@ -118,8 +118,20 @@ class PID():
         return u_t
     
     def reset(self):
-        self.last_error = 0
-        self.__intgral = 0
+        self.__last_error = 0
+        self.__integral = 0
+    
+    def set_params(self, pid_obj):
+        self.__integral = pid_obj.__integral
+        self.__last_error = pid_obj.__last_error
+
+    @property
+    def integral(self):
+        return self.__integral
+    
+    @property
+    def last_error(self):
+        return self.__last_error
     
 class Algorithms:
     def __init__(self, controller, mode="random", delta_t=0.1):
@@ -133,12 +145,13 @@ class Algorithms:
         self.__controller = controller
         self.__delta_t = delta_t
         self.to_draw = []
-        self.local_start = None
 
         self.__last_angle = 180
         self.__cum_rotatation = 0 # calc from gyro
-        self.__local_pose = np.array([0.0, 0.0]) # calc from opticalflow and gyro
-        self.__rotation_matrix = np.identity(3)
+        self.__cum_distance = 0 
+        self.__local_pose =  np.array([0.0, 0.0]) # calc from opticalflow and gyro
+
+        self.__rotation_matrix = np.matmul(np.identity(3), create_rotation_matrix_yx(180)) 
 
 
         #PIDs
@@ -146,15 +159,15 @@ class Algorithms:
         self.PID_r = PID(4,4,2)
         
         #tunnel PIDs
-        self.PID_p_t = PID(1,0.006,0.6, disired_distance=0.3)
-        self.PID_r_t = PID(3,3,1.5, disired_distance=0.3)
+        # self.PID_p_t = PID(1,0.006,0.6, disired_distance=0.3)
+        # self.PID_r_t = PID(3,3,1.5, disired_distance=0.3)
 
         # keeps track of itersactions passed
         self.intersections = []
         
         # BAT tresholds
         self.emengercy_tresh = 0.3
-        self.tunnel_tresh = 0.7
+        self.tunnel_tresh = 0.75
         self.front_tresh = 1
         self.right_far_tresh = 2.5
         self.left_far_tresh = 2.5
@@ -177,21 +190,26 @@ class Algorithms:
         self.__auto = False
         self.__t_id.join()
     
-    def sample_data(self):
-        self.__data = self.__controller.sensors_data()
-        
-        tr_mat = create_rotation_matrix_yx(self.__last_angle)
+    def update_local_pos(self):
+        tr_mat = create_rotation_matrix_yx(self.__data['gyro'])
         self.__rotation_matrix = np.matmul(self.__rotation_matrix, tr_mat)
         # x axis
         direction = make_direction(self.__rotation_matrix)
+        # print("x_direction: " , direction)
         pos = self.__local_pose.copy()
-        pos += direction * self.__data['v_x']
+        pos += direction * self.__data['v_x'] * (100 / 2.5) * self.__delta_t
         # y axis
         direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
-        pos += (-1) * direction * self.__data['v_y']
+        # print("y_direction: " , direction)
+
+        pos += (-1 ) * direction * self.__data['v_y'] * (100 / 2.5) * self.__delta_t
 
         self.__local_pose = pos
-        self.__cum_rotatation = self.__cum_rotatation % 360   
+        self.__cum_rotatation = self.__cum_rotatation % 360
+        self.__cum_distance += math.sqrt(self.__data['v_x']**2 + self.__data['v_y']**2) * self.__delta_t
+
+    def sample_data(self):
+        self.__data = self.__controller.sensors_data()
     
     @property
     def state(self):
@@ -210,23 +228,25 @@ class Algorithms:
 
     def Emengercy(self):
         self.__state = 'Emengercy'
+        self.__last_angle = 0
+        self.__controller.roll(0)
         self.__controller.pitch(-1)
         
     def Tunnel(self, left, right, wall_align = 'd_right'):
         self.__state = 'Tunnel'
-        u_t_p_t = self.PID_p_t.compute(self.__data['d_front'])
+        self.__last_angle = 0
+        u_t_p_t = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p_t)        
         epsilon = 0.2
         if abs(right - left) > epsilon :
-            u_t_r_t = self.PID_r_t.compute(self.__data[wall_align])
+            u_t_r_t = self.PID_r.compute(self.__data[wall_align])
             self.__controller.roll(u_t_r_t) 
 
     def Fly_Forward(self, wall_align = 'd_right'):
         self.__state = 'Forward'
+        self.__last_angle = 0
         u_t_p = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p)
-
-        # print("u_t_p: ", u_t_p)
 
         sign = 1
         if wall_align == 'd_left':
@@ -234,8 +254,6 @@ class Algorithms:
         
         u_t_r = sign * self.PID_r.compute(self.__data[wall_align])        
         self.__controller.roll(u_t_r)
-
-        # print("u_t_r: ", u_t_r)
 
 
     def RotateCCW(self):
@@ -281,13 +299,17 @@ class Algorithms:
         for _ in range(min_index_deg):
             self.RotateCCW()
             ang += 10
+            # time.sleep(self.__delta_t)
         self.__last_angle -= ang
+
+        self.update_local_pos()
             
     def BAT(self):
         epsilon = 0.28
         
         self.__controller.takeoff()
-        self.sample_data()
+        if self.__data == None:
+            self.sample_data()
         current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         prev = current.copy()
 
@@ -315,6 +337,7 @@ class Algorithms:
                 self.RotateCW_90()
             else:
                 self.Fly_Forward()
+
             prev = current.copy()
             current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
             
@@ -328,16 +351,19 @@ class Algorithms:
                 self.intersections.append((norm_current, t))
                 self.to_draw.append(self.__controller.position)
 
-            #print("local_pos: ", self.__local_pose)
+            self.update_local_pos()
+
+            # print("local_pos: ", self.__local_pose)
+            print("distance: ", self.__cum_distance)
             # print("cum_rotatation: ", self.__cum_rotatation)
 
             time.sleep(self.__delta_t)
         
         # drone go home
         self.PID_p.reset()
-        self.PID_p_t.reset()
+        # self.PID_p_t.reset()
         self.PID_r.reset()
-        self.PID_r_t.reset()
+        # self.PID_r_t.reset()
 
         # stop movement
         self.__controller.pitch(0)
@@ -412,8 +438,11 @@ class Algorithms:
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
             rmses = [rmse(norm_current, v[0]) for v in homes]
-            #print("local_pos: ", self.__local_pose)
-            print("min(rmses): ", min(rmses))
+
+            print("local_pos: ", self.__local_pose)
+            # print("min(rmses): ", min(rmses))
+
+            self.update_local_pos()
 
             time.sleep(self.__delta_t)
 
