@@ -61,7 +61,7 @@ def main():
     algo = Algorithms(controller, mode="bat")
 
     # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
+    clock = Clock(maximum_time_to_live = 2*60.0, current_time_to_live = 2*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width, world.height])
@@ -95,7 +95,7 @@ def main():
             sensors_view.take_measurements_gyro(odometry)
 
 
-
+            algo.step()
             controller.move()
             algo.sample_data()
 

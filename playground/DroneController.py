@@ -32,11 +32,19 @@ class DroneController:
 
         # self.t_move = threading.Thread(target=self.move, args=())
         self.__running = False
+
+        self.x = 0
+        self.y = 0
+        self.last_change = 0
     
     @property
     def position(self):
         return self.__robot.position
 
+    @property
+    def robot(self):
+        return self.__robot
+        
     def move(self):
         # while self.__running:
 
@@ -47,6 +55,7 @@ class DroneController:
             elif self.__yaw > 0:
                 sign = 1
 
+            self.last_change = sign * self.__angle_inc
             self.__robot.rotate(sign * self.__angle_inc)
             self.__counter -= 1
             self.__yaw -= sign * self.__angle_inc
@@ -75,10 +84,10 @@ class DroneController:
         elif self.__speed_y < self.__min_speed:
             self.__speed_y = self.__min_speed
         
-        x = self.__speed_x * self.__delta_t
-        y = self.__speed_y * self.__delta_t
+        self.x = self.__speed_x * self.__delta_t
+        self.y = self.__speed_y * self.__delta_t
 
-        self.__robot.move(x, y)
+        self.__robot.move(self.x, self.y)
 
     def stop(self):
         self.__running = False

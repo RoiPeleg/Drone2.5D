@@ -38,7 +38,7 @@ class Robot(Body):
     @property
     def sensor(self):
         return self.__sensor
-
+    
     def draw(self, screen, h, w):
         # draw the init drone position
         init_position = to_screen_coords(h, w, self.start_drone_positions[self.__filename])
