@@ -58,10 +58,10 @@ def main():
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
-    algo = Algorithms(controller, mode="bat")
+    algo = Algorithms(controller)
 
     # clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 2*60.0, current_time_to_live = 2*60.0)
+    clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width, world.height])
@@ -94,11 +94,10 @@ def main():
             # gyro sensor:
             sensors_view.take_measurements_gyro(odometry)
 
-
+            algo.sample_data()
             algo.step()
             controller.move()
-            algo.sample_data()
-
+            
             time.sleep(0.1)
 
             if clock.current_time_to_live <= 0:
@@ -109,7 +108,6 @@ def main():
     # start simulation loop
     running = True
     t_clock.start()
-    algo.run()
     robot.rotate(180)
     while running:
         try:
@@ -181,8 +179,6 @@ def main():
             # User interrupt the program with ctrl+c
             running = False
     
-    controller.stop()
-    algo.stop()
     pygame.quit()
     t_clock.join(0.1)
     exit()

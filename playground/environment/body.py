@@ -14,7 +14,7 @@ class Body:
         
         self.__pos = np.zeros(2)
         self.start_drone_positions = {"assets/p15.png": np.array([120.0, 610.0]),
-                                        "assets/p11.png": np.array([240.0, -570.0]),
+                                        "assets/p11.png": np.array([250.0, -570.0]),
                                         "assets/map.png": np.array([160.0, 0.0]),
                                          "assets/p14.png": np.array([0.0, 100.0])
                                         }
@@ -43,8 +43,8 @@ class Body:
         direction = make_direction(self.__rotation_matrix)
         pos = self.__pos.copy()
         pos += direction * dist_x
-        direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(90)))
-        pos += (-1) * direction * dist_y
+        direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(-90)))
+        pos += direction * dist_y
         return pos
 
     def set_altitude(self, alt):
