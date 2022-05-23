@@ -4,6 +4,9 @@ import threading
 import math
 import numpy as np
 
+def clip(n, minn, maxn):
+    return max(min(maxn, n), minn)
+
 # Drone API
 class DroneController:
     def __init__(self, __robot,__sensor_view, delta_t = 0.1):
@@ -62,10 +65,7 @@ class DroneController:
         elif self.__speed_x > round(w_speed_x):
             self.__speed_x = round(self.__speed_x - self.__acceleration_x * self.__delta_t)
             
-        if self.__speed_x > self.__max_speed:
-            self.__speed_x = self.__max_speed
-        elif self.__speed_x < self.__min_speed:
-            self.__speed_x = self.__min_speed
+        self.__speed_x = clip(self.__speed_x, self.__min_speed, self.__max_speed)
 
         w_speed_y = (self.__roll - self.__min_rotate) / (self.__max_rotate - self.__min_rotate) * (self.__max_speed - self.__min_speed) + self.__min_speed
 
@@ -74,10 +74,7 @@ class DroneController:
         elif self.__speed_y > round(w_speed_y):
             self.__speed_y = round(self.__speed_y - self.__acceleration_y * self.__delta_t)
 
-        if self.__speed_y > self.__max_speed:
-            self.__speed_y = self.__max_speed
-        elif self.__speed_y < self.__min_speed:
-            self.__speed_y = self.__min_speed
+        self.__speed_y = clip(self.__speed_y, self.__min_speed, self.__max_speed)
         
         self.x = self.__speed_x * self.__delta_t
         self.y = self.__speed_y * self.__delta_t
@@ -92,21 +89,11 @@ class DroneController:
             self.__counter = -1 * angle / (self.__angle_inc / 10)
         
     def pitch(self, angle):
-        
-        self.__pitch = angle
-        if self.__pitch < self.__min_rotate:
-            self.__pitch = self.__min_rotate
-        if self.__pitch > self.__max_rotate:
-            self.__pitch = self.__max_rotate
+        self.__pitch = clip(angle, self.__min_rotate, self.__max_rotate)
 
     def roll(self, angle):
-
-        self.__roll = angle
-        if self.__roll < self.__min_rotate:
-            self.__roll = self.__min_rotate
-        if self.__roll > self.__max_rotate:
-            self.__roll = self.__max_rotate
-
+        self.__roll = clip(angle, self.__min_rotate, self.__max_rotate)
+    
     def takeoff(self):
         time.sleep(1)
         self.__robot.set_altitude(1)
