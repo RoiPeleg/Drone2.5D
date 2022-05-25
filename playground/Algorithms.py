@@ -50,7 +50,7 @@ def done_intersection(dis, dis_prev, delta_t=0.1):
     return False
 
 def is_intersection(left, right):
-    threshold = 2
+    threshold = 2.3
     if left > threshold or right > threshold:
         return True
     return False
@@ -131,17 +131,19 @@ class Algorithms:
 
         #PIDs
         self.PID_p = PID(1.5,0.004,0.4, disired_distance=0.1)
-        self.PID_r = PID(6.0,6.0,2.0)
+        self.PID_r = PID(5.8,6.0,2.0)
 
         # keeps track of itersactions passed
         self.draw_intersections = []
+        self.draw_intersections_home = []
         self.to_draw_home = []
 
         self.prev_norm_current = []
         self.start_intersection_pose = []
 
         self.start_intersection_flag = False
-
+        self.__inter_vs = []
+        
         self.__wall_distance = []
         self.__cum_gyro = 0
         self.__delta_c_t = 0
@@ -172,7 +174,7 @@ class Algorithms:
             position = to_screen_coords(h, w, p)
             pygame.draw.circle(screen, color=(0, 255, 0), center=position, radius=10)
         
-        for p in self.to_draw_home : #intersction on the way back
+        for p in self.draw_intersections_home : #intersction on the way back
             position = to_screen_coords(h, w, p)
             pygame.draw.circle(screen, color=(0, 0, 255), center=position, radius=10)
   
@@ -256,21 +258,25 @@ class Algorithms:
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
         self.__controller.yaw(10)
+        self.__cum_gyro += 10
         # self.follow_rotation(10)
     
     def RotateCW(self):
         self.__state = 'Rotate CW'
         self.__controller.yaw(-10)
+        self.__cum_gyro -= 10
         # self.follow_rotation(-10)
 
     def RotateCW_90(self):
         self.__state = 'Rotate 90CW'
         self.__controller.yaw(-90)
+        self.__cum_gyro -= 90
         # self.follow_rotation(-90)
     
     def RotateCCW_90(self):
         self.__state = 'Rotate 90CCW'
         self.__controller.yaw(90)
+        self.__cum_gyro += 90
         # self.follow_rotation(90)
 
     # def rotate180(self):
@@ -368,84 +374,60 @@ class Algorithms:
         else:
             self.Fly_Forward()
         
-        if start_intersection(self.__current, self.__prev):
-            norm_current = self.__current.copy()
-            norm_current[norm_current == np.inf] = 3.0
-            norm_current = norm(norm_current)
-            self.start_intersection_flag = True
-            self.prev_norm_current = norm_current
-            self.start_intersection_pose = self.__controller.position
-            
-        elif done_intersection(self.__current, self.__prev) and self.start_intersection_flag:
-            self.start_intersection_flag = False
-            norm_current_end = self.__current.copy()
-            norm_current_end[norm_current_end == np.inf] = 3.0
-            norm_current_end = norm(norm_current_end)
-            time = self.__delta_c_t
-            mean = np.mean(self.__wall_distance)
-            std = np.std(self.__delta_c_t)
-            dir = self.__cum_gyro
-            vec = np.array([time,mean,std,dir])
-            sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]),vec) < 0.02)
-            if len(sim_edge) == 0 :
-                # self.draw_intersections.append((self.start_intersection_pose + self.__controller.position)/2.0)
-
-                # Add to graph:
-                self.__g.add_vertex()
-                self.__g.vs[self.__vertices_counter]["distance"] = (self.prev_norm_current + norm_current_end)/2.0
-
-                self.__g.add_edge(self.__vertices_counter - 1, self.__vertices_counter)
-                self.__g.es[self.__vertices_counter -1]["time"] = self.__delta_c_t
-                self.__g.es[self.__vertices_counter -1]["mean_dis"] = np.mean(self.__wall_distance)
-                self.__g.es[self.__vertices_counter -1]["std_dis"] = np.std(self.__delta_c_t)
-                self.__g.es[self.__vertices_counter -1]["cum_gyro"] = self.__cum_gyro
-                if self.counter_loop > 0:
-                    self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
-                    self.counter_loop = 0
-            else:
-                self.__g.delete_edges(sim_edge[0])
-                self.counter_loop +=1
-
-            self.__wall_distance = []
-            self.__cum_gyro = 0
-            self.__delta_c_t = 0
-
-            layout = self.__g.layout("kk")
-            ig.plot(self.__g, layout=layout)
-            
-            self.__vertices_counter = self.__vertices_counter + 1
-
-            # print('delta_c:', self.__delta_c_t)
-        
         if is_intersection(self.__current[1], self.__current[3]):
             norm_current = self.__current.copy()
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
-            # self.intersections.append((norm_current, self.__delta_c_t, self.cum_gyro))
-            self.draw_intersections.append(self.__controller.position)
 
-        self.__wall_distance.append(abs(self.__current[3]-self.__current[1]))
+            time = self.__delta_c_t
+            mean = np.mean(self.__wall_distance)
+            std = np.std(self.__wall_distance)
+            dir = self.__cum_gyro
+            sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
+            if self.__delta_c_t > 1.5:
+                if len(sim_edge) == 0 :
+                    # Add to graph:
+                    self.__g.add_vertex()
+                    self.__inter_vs.append(norm_current)
+                    self.__g.vs[self.__vertices_counter]["distance"] = np.mean(self.__inter_vs)
+                    self.__inter_vs = []
+                    self.__g.add_edge(self.__vertices_counter - 1, self.__vertices_counter)
+                    self.__g.es[self.__vertices_counter -1]["time"] = time
+                    self.__g.es[self.__vertices_counter -1]["mean_dis"] = mean
+                    self.__g.es[self.__vertices_counter -1]["std_dis"] = std
+                    self.__g.es[self.__vertices_counter -1]["cum_gyro"] = dir
+                    print("dir",dir)
+                    if self.counter_loop > 0:
+                        self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
+                        self.counter_loop = 0
+                        
+                    self.__vertices_counter = self.__vertices_counter + 1
+                    # layout = self.__g.layout("kk")
+                    # ig.plot(self.__g, layout=layout)
+                    self.draw_intersections.append(self.__controller.position)
+                    self.__wall_distance = []
+                    self.__cum_gyro = 0
+                    self.__delta_c_t = 0
+                else:
+                    self.__g.delete_edges(sim_edge[0])
+                    self.counter_loop +=1
+
+            else:
+                self.__inter_vs.append((norm_current))
+
+            # print('delta_c:', self.__delta_c_t)
+        self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
         self.__delta_c_t += self.__delta_t 
 
-    def GoHome(self, epsilon):
-        self.__delta_c_t = 0
-        
-        # if self.__time_to_home != None:
-        #     self.__delta_c_t += self.__delta_t
-        #     # if abs(self.__delta_c_t - self.__time_to_home) < epsilon:
-        #     if 
-        #         self.__arrive_home = True
-        #         return
-        
+    def GoHome(self, epsilon):        
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
         norm_current = norm(norm_current)
-        rmses = [rmse(norm_current, v[
-            0]) for v in self.__homes]
+        rmse = rmse(norm_current, self.home)
         
-        print("min(rmses): ", min(rmses))
+        print("min(rmses): ", rmse)
 
-        if min(rmses) < 0.1:
+        if min(rmse) < 0.1:
                 self.__arrive_home = True
                 
         if self.__current[0] < self.emengercy_tresh:
@@ -461,40 +443,34 @@ class Algorithms:
         else:
             self.Fly_Forward(wall_align='d_left')
 
-            
-        if start_intersection(self.__current, self.__prev):
-            norm_current = self.__current.copy()
-            norm_current[norm_current == np.inf] = 3.0
-            norm_current = norm(norm_current)
-            if abs(self.__delta_c_t - self.intersections[-1][1]) < epsilon:
-                print('delta_c:',self.__delta_c_t)
-                self.__delta_c_t = 0
-                if len(self.intersections) == 1:
-                    self.__time_to_home = self.intersections[0][1]
-                    print("time_to_home: ", self.__time_to_home)
-
-                self.intersections.pop()
+        if is_intersection(self.__current[1], self.__current[3]):
+            time = self.__delta_c_t
+            mean = np.mean(self.__wall_distance)
+            std = np.std(self.__wall_distance)
+            dir = self.__cum_gyro
+            sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
+            if self.__delta_c_t > 1:
+                if len(sim_edge) != 0 :
+                    # Add to graph:
+                    self.__inter_vs.append(norm_current)
+                    vs_mean =  np.mean(self.__inter_vs)
+                    self.__inter_vs = []
+                    sim_vs = [rmse(e.source,vs_mean) for e in sim_edge]
+                    edge = sim_edge[np.argmin(sim_vs)]
+                    # if edge["cum_gyro"] >= 90:
+                    #     self.RotateCCW_90()
+                    # elif edge["cum_gyro"] <= -90:
+                    #     self.RotateCW_90()
+                    self.draw_intersections_home.append(self.__controller.position)
+            else:
+                self.__inter_vs.append((norm_current))
                 
-            elif self.__delta_c_t > self.intersections[-1][1] - epsilon:
-                sum = 0
-                count = 0
+            self.__wall_distance = []
+            self.__cum_gyro = 0
+            self.__delta_c_t = 0
 
-                for i in reversed(self.intersections):
-                    sum += i[1]
-                    count += 1
-                    if sum - epsilon >= self.__delta_c_t:
-                        break
-
-                for i in range(count):
-                    self.intersections.pop()
-                    if len(self.intersections) == 1:
-                        time_to_home = self.intersections[0][1]
-                        print("time_to_home: ", time_to_home)
-
-                self.__delta_c_t = 0
-
-            self.to_draw_home.append(self.__controller.position)
-                
-            self.__delta_c_t += self.__delta_t
+        self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
+        self.__delta_c_t += self.__delta_t
+        
             
 
