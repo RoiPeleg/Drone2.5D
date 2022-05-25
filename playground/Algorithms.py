@@ -145,7 +145,7 @@ class Algorithms:
         self.__wall_distance = []
         self.__cum_gyro = 0
         self.__delta_c_t = 0
-
+        self.counter_loop = 0
         # BAT tresholds
         self.emengercy_tresh = 0.3
         self.tunnel_tresh = 0.75
@@ -335,6 +335,8 @@ class Algorithms:
                 self.__second_go_home = False
             
         elif self.__data["battery"] > 0 and not self.__arrive_home:
+            layout = self.__g.layout("kk")
+            ig.plot(self.__g, layout=layout)
             self.GoHome(epsilon)
 
         elif self.__data["battery"] <= 0:
@@ -371,7 +373,6 @@ class Algorithms:
             norm_current[norm_current == np.inf] = 3.0
             norm_current = norm(norm_current)
             self.start_intersection_flag = True
-
             self.prev_norm_current = norm_current
             self.start_intersection_pose = self.__controller.position
             
@@ -398,16 +399,19 @@ class Algorithms:
                 self.__g.es[self.__vertices_counter -1]["mean_dis"] = np.mean(self.__wall_distance)
                 self.__g.es[self.__vertices_counter -1]["std_dis"] = np.std(self.__delta_c_t)
                 self.__g.es[self.__vertices_counter -1]["cum_gyro"] = self.__cum_gyro
-                
+                if self.counter_loop > 0:
+                    self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
+                    self.counter_loop = 0
             else:
                 self.__g.delete_edges(sim_edge[0])
+                self.counter_loop +=1
 
             self.__wall_distance = []
             self.__cum_gyro = 0
             self.__delta_c_t = 0
 
-            # layout = self.__g.layout("kk")
-            # ig.plot(self.__g, layout=layout)
+            layout = self.__g.layout("kk")
+            ig.plot(self.__g, layout=layout)
             
             self.__vertices_counter = self.__vertices_counter + 1
 
@@ -436,7 +440,8 @@ class Algorithms:
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
         norm_current = norm(norm_current)
-        rmses = [rmse(norm_current, v[0]) for v in self.__homes]
+        rmses = [rmse(norm_current, v[
+            0]) for v in self.__homes]
         
         print("min(rmses): ", min(rmses))
 
