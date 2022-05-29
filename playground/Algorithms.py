@@ -9,6 +9,7 @@ import pygame
 from playground.utils.transform import to_screen_coords,create_rotation_matrix_yx, make_direction
 np.random.seed(42)
 
+from playground.pfilter import ParticleFilter
 
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
