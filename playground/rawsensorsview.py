@@ -11,6 +11,8 @@ class RawSensorsView:
         self.__w = world_w
         self.__z = world_z
         self.__map = np.full((world_h, world_w), 255, dtype=np.uint8)
+        self.__local_map = np.full((world_h, world_w), 255, dtype=np.uint8)
+
         self.__prev_pos = None
         self.__prev_pos_real = None
         self.__opticalflow = [0, 0]
@@ -21,7 +23,7 @@ class RawSensorsView:
         self.__drone_height = 0
         self.__dis_from_roof = self.__z
 
-        self.__distance_from_obstacles = np.empty(4)
+        self.__distance_from_obstacles = None
 
     def take_measurements_battery(self,battery_prectange):
         self.__battery = battery_prectange
@@ -63,7 +65,7 @@ class RawSensorsView:
         obstacles = sensor.get_obstacles()
         if obstacles is not None:
             obstacles = obstacles.copy()
-            self.__distance_from_obstacles = np.empty(4)
+            self.__distance_from_obstacles = np.empty(len(obstacles))
             ls = []
 
             # compute the distance between the robot and each obstacles
@@ -76,7 +78,7 @@ class RawSensorsView:
                     pos = np.array(odometry.position)
                     d = np.sqrt((obs[0])**2 + (obs[1])**2 )
                     self.__distance_from_obstacles[obs_index] = d
-
+            
             # remove inf form real obsticals
             if ls != []:
                 obstacles = np.delete(obstacles, ls, axis=0)
@@ -94,6 +96,7 @@ class RawSensorsView:
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
+            self.__local_map[obstacles[:, 0], obstacles[:, 1]] = 0
 
 
 
@@ -129,7 +132,11 @@ class RawSensorsView:
     @property
     def map(self):
         return self.__map
-        
+    
+    @property
+    def local_map(self):
+        return self.__local_map
+
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)
         surf = pygame.surfarray.make_surface(transposed_map)

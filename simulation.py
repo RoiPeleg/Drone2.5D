@@ -17,16 +17,11 @@ from playground.environment.world import World
 from playground.DroneController import DroneController
 from playground.Algorithms import Algorithms
 
-# import playground.slam.backend
-# import playground.slam.gtsambackend
+from matplotlib import pyplot as plt 
 
 import time
 import numpy as np
 np.random.seed(42)
-
-class SimulationMode(Enum):
-    RAW_SENSORS = 1,
-    ICP_ADJUSTMENT = 2        
 
 class Clock:
         def __init__(self, maximum_time_to_live, current_time_to_live):
@@ -60,10 +55,6 @@ def main():
     robot = Robot(odometry, sensor, world, args.filename)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
-    # gtsam_slam_back_end = playground.slam.gtsambackend.GTSAMBackEnd(edge_sigma=0.5, angle_sigma=0.1)
-    # slam_back_end = playground.slam.backend.BackEnd(edge_sigma=0.5, angle_sigma=0.1)
-
-    text_pos = (15, 15)
 
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller)
@@ -72,11 +63,8 @@ def main():
     # clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
     
     # Initialize rendering
-    screen = pygame.display.set_mode([world.width, world.height])
+    screen = pygame.display.set_mode([2*world.width, world.height])
     font = pygame.font.Font(pygame.font.get_default_font(), 18)
-    
-    # sensors_text_surface = font.render('Sensors', True, (255, 0, 0))
-    # icp_text_surface = font.render('ICP', True, (255, 0, 0))
 
     # Robot movement configuration
     rotation_step = 10  # degrees
@@ -117,10 +105,9 @@ def main():
     t_clock = threading.Thread(target=clock_fun, args=())
     
     # start simulation loop
-    simulation_mode = SimulationMode.RAW_SENSORS
     running = True
-    t_clock.start()
     robot.rotate(180)
+    t_clock.start()
     while running:
         try:
             for event in pygame.event.get():
@@ -137,33 +124,11 @@ def main():
                         robot.move(moving_step, 0)
                     if event.key == pygame.K_DOWN:
                         robot.move(-moving_step, 0)
-                    
-                    if event.key == pygame.K_r:
-                        simulation_mode = SimulationMode.RAW_SENSORS
-                    if event.key == pygame.K_i:
-                        simulation_mode = SimulationMode.ICP_ADJUSTMENT
-                    # if event.key == pygame.K_s:
-                    #     # we assume that we detect a loop so can try to optimize pose graph
-                    #     loop_frame = slam_front_end.create_loop_closure(sensor)
-                    #     slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                    #     break
-                    # if event.key == pygame.K_g:
-                    #     # we assume that we detect a loop so can try to optimize pose graph
-                    #     loop_frame = slam_front_end.create_loop_closure(sensor)
-                    #     gtsam_slam_back_end.update_frames(slam_front_end.get_frames(), loop_frame)
-                    #     break
 
             world.draw(screen, sensors_view.map)
             robot.draw(screen, world.height, world.width)
             algo.draw(screen, world.height, world.width)
-            # sensors_view.draw(screen, offset=world.width)
-            
-            # if simulation_mode == SimulationMode.RAW_SENSORS:
-            #     sensors_view.draw(screen, offset=world.width)
-            #     screen.blit(sensors_text_surface, dest=text_pos)
-            # if simulation_mode == SimulationMode.ICP_ADJUSTMENT:
-            #     slam_front_end.draw(screen, offset=world.width)
-            #     screen.blit(icp_text_surface, dest=text_pos)
+            sensors_view.draw(screen, offset=world.width)
 
             data_sensors = controller.sensors_data()
             
