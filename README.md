@@ -26,7 +26,7 @@ We did the following improvements:
   - Two for the pitch and roll angle for a tunnel state in order to get more smooth movements.
 2. Identify large derivative in the sides in order to identify intersections and "Point Of Interset" (POI).
 3. Make little yaw adjustments in order to fix noise.
-
+4. Implement Particle filter for localization.
 ### How to use:
 
 Run at the terminal the command: python simulation.py
