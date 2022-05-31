@@ -166,7 +166,7 @@ class Algorithms:
         self.__vertices_counter = 0
 
         self.__pf = ParticleFilter(N=50, x_dim=646, y_dim=1296)
-        
+        self.home = None
 
     @property
     def state(self):
@@ -306,8 +306,8 @@ class Algorithms:
         if self.__first_step:
             self.__controller.takeoff()
 
-            home = self.__current.copy()
-            home[home == np.inf] = 3.0
+            self.home = self.__current.copy()
+            self.home[self.home == np.inf] = 3.0
             self.__first_step = False
             
             # add home to graph
@@ -441,7 +441,7 @@ class Algorithms:
         
         print("min(rmses): ", error)
 
-        if min(error) < 0.1:
+        if np.min(error) < 0.1:
                 self.__arrive_home = True
                 
         if self.__current[0] < self.emengercy_tresh:
