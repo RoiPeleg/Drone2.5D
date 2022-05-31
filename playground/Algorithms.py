@@ -164,6 +164,8 @@ class Algorithms:
 
         self.__g = ig.Graph()
         self.__vertices_counter = 0
+
+        self.__pf = ParticleFilter(N=50, x_dim=646, y_dim=1296)
         
 
     @property
@@ -298,7 +300,7 @@ class Algorithms:
     #         else :
     #             self.__done180 = True
 
-    def step(self):
+    def step(self, local_map):
         if self.__first_step:
             self.__controller.takeoff()
 
@@ -314,6 +316,12 @@ class Algorithms:
 
         epsilon = 0.3
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
+
+        self.__pf.predict(u=(self.__data["v_x"], self.__data["v_y"]), map=local_map, std=(0, 0), )
+        self.__pf.weight(z=self.__current, var=0)
+        self.__pf.resample()
+
+        print("pos: ", self.__pf.estimate())
 
         if self.__data["battery"] > 55:
             self.BAT(epsilon)

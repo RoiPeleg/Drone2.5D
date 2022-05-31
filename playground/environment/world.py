@@ -12,13 +12,18 @@ class World:
         Physical environment simulation element
     """
 
-    def __init__(self, map_file_name, max_z):
+    def __init__(self, map_file_name, max_z, matrix=None):
         self.__map_file_name = map_file_name
         self.__width = 0
         self.__height = 0
         self.__map = None
         self.__max_z = max_z
-        self.read_map()
+        if map_file_name != None:
+            self.read_map()
+        else:
+            self.__map = matrix.copy()
+            self.__width = matrix.shape[0]
+            self.__height = matrix.shape[1]
 
         # Initialize Hilbert curve object for generating obstacle ids
         max_side = max(self.__width, self.__height)
@@ -44,6 +49,9 @@ class World:
     @property
     def max_z(self):
         return self.__max_z
+
+    def set_map(self, new_map):
+        self.__map = new_map.copy()
 
     def draw(self, screen, sensor_map):
         transposed_map = np.transpose(0.5 * self.__map.copy() + 0.5 * sensor_map.copy())

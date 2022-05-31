@@ -10,10 +10,12 @@ for more information.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from turtle import position
 
 
 import warnings
 
+from playground.utils.transform import create_rotation_matrix_yx
 from filterpy.monte_carlo import stratified_resample, residual_resample
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -22,15 +24,26 @@ import numpy as np
 from numpy.random import randn, random, uniform, multivariate_normal, seed
 import scipy.stats
 
-
+from playground.Lidar import Lidar 
+from playground.rawsensorsview import RawSensorsView
+from playground.environment.world import World
 
 class ParticleFilter(object):
 
-    def __init__(self, N, x_dim, y_dim):
+    def __init__(self, N, x_dim, y_dim, resolution=2.5):
+        self.sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
+        self.sensors_view = RawSensorsView(y_dim, x_dim, 0)
+        self.world = World(None, 0, np.full((y_dim, x_dim), 255, dtype=np.uint8))
+
         self.particles = np.empty((N, 3))  # x, y, heading
+        # self.sensors = [Lidar(dist_range=120, fov=90, mu=0, sigma=0.02) for _ in range(N)]
+        # self.particles [Robot(None, self.sensors[i], self.world, None) for i in range(N)]
+        self.dist_from_wall = np.empty((N, 4)) # the distance from wall arrond
+
         self.N = N
         self.x_dim = x_dim
         self.y_dim = y_dim
+        self.__resolution = resolution
 
         # distribute particles randomly with uniform weight
         self.weights = np.empty(N)
@@ -40,7 +53,7 @@ class ParticleFilter(object):
         self.particles[:, 2] = uniform(0, 2*np.pi, size=N)
 
 
-    def predict(self, u, std):
+    def predict(self, u, map, std):
         """ move according to control input u with noise std"""
 
         self.particles[:, 2] += u[0] + randn(self.N) * std[0]
@@ -52,10 +65,18 @@ class ParticleFilter(object):
 
         self.particles[:, 0:2] += u + randn(self.N, 2) * std
 
+        for i in range(self.N):
+            pos = np.array([self.particles[i, 1], self.particles[i, 0]])
+            rotation_mat = create_rotation_matrix_yx(self.particles[i, 2])
+            self.world.set_map(map)
+
+            self.sensor.scan(pos, rotation_mat, self.world)
+            self.sensors_view.take_measurements(None, self.sensor, position=pos, rotation=rotation_mat)
+            ds = self.sensors_view.distance_from_obstacles * self.__resolution / 100
+            self.dist_from_wall[i] = np.array([ds[4], ds[14], ds[0], ds[9]])
 
     def weight(self, z, var):
-        dist = np.sqrt((self.particles[:, 0] - z[0])**2 +
-                       (self.particles[:, 1] - z[1])**2)
+        dist = np.sqrt((self.dist_from_wall[:, 0] - z[0])**2 + (self.dist_from_wall[:, 1] - z[1])**2 + (self.dist_from_wall[:, 2] - z[1])**2 + (self.dist_from_wall[:, 3] - z[1])**2)
 
         # simplification assumes variance is invariant to world projection
         n = scipy.stats.norm(0, np.sqrt(var))

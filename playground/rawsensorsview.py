@@ -48,9 +48,13 @@ class RawSensorsView:
         self.__prev_angle = current_ang
         
     # mesures lidar distances
-    def take_measurements(self, odometry, sensor):
+    def take_measurements(self, odometry, sensor, position=None, rotation=None):
         # Process odometery
-        position = to_screen_coords(self.__h, self.__w, odometry.position)
+        if odometry != None:
+            position = to_screen_coords(self.__h, self.__w, odometry.position)
+        else:
+            position = to_screen_coords(self.__h, self.__w, position)
+        
         if self.__prev_pos is not None:
             rr, cc, _ = line_aa(self.__prev_pos[1], self.__prev_pos[0], position[1], position[0])
             # noise in the odometry can break coordinates
@@ -75,7 +79,6 @@ class RawSensorsView:
                     ls.append(obs_index)
                 else:
                     obs = np.array(obstacles[obs_index, :2])
-                    pos = np.array(odometry.position)
                     d = np.sqrt((obs[0])**2 + (obs[1])**2 )
                     self.__distance_from_obstacles[obs_index] = d
             
@@ -88,8 +91,12 @@ class RawSensorsView:
                 print("obstacles: ", obstacles)
 
             # convert points into world coordinate system
-            obstacles = transform_points(obstacles[:, :2], odometry.rotation)
-            obstacles += odometry.position[:2].astype(int)
+            if odometry != None:
+                obstacles = transform_points(obstacles[:, :2], odometry.rotation)
+                obstacles += odometry.position[:2].astype(int)
+            else:
+                obstacles = transform_points(obstacles[:, :2], rotation)
+                obstacles += np.array(position)[:2].astype(int)
             obstacles[:, 0] = self.__h // 2 - obstacles[:, 0]
             obstacles[:, 1] += self.__w // 2
             # noise in the odometry can break coordinates

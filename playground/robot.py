@@ -15,17 +15,20 @@ class Robot(Body):
 
     def rotate(self, angle):
         super().rotate(angle)
-        self.__odomentry.track_rotate(angle)
+        if self.__odomentry != None:
+            self.__odomentry.track_rotate(angle)
 
     def move(self, dist_x, dist_y):
         if self.__world.allow_move(self.try_move(dist_x, dist_y), self.size):
             super().move(dist_x, dist_y)
             # print('distx',dist_x,'disty',dist_y)
-            self.__odomentry.track_move(dist_x, dist_y)
+            if self.__odomentry != None:
+                self.__odomentry.track_move(dist_x, dist_y)
 
     def set_altitude(self, new_alt):
         super().set_altitude(new_alt)
-        self.__odomentry.track_altitude(new_alt)
+        if self.__odomentry != None:
+            self.__odomentry.track_altitude(new_alt)
         
     @property
     def odomentry(self):

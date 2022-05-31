@@ -76,9 +76,9 @@ def main():
             
             # lidar sensor:
             sensor.scan(robot.position, robot.rotation, world)
+            robot.sensor.scan(robot.position, robot.rotation, world)
             sensors_view.take_measurements(odometry, sensor)
             slam_front_end.add_key_frame(sensor)
-            robot.sensor.scan(robot.position, robot.rotation, world)
             
             # battery sensor:
             clock.decay()
@@ -94,7 +94,7 @@ def main():
             sensors_view.take_measurements_gyro(odometry)
 
             algo.sample_data()
-            algo.step()
+            algo.step(sensors_view.local_map)
             controller.move()
             
             time.sleep(0.1)
