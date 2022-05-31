@@ -42,6 +42,15 @@ class Robot(Body):
     def sensor(self):
         return self.__sensor
     
+    def set_pos(self, new_pos):
+        self.__pos = new_pos
+    
+    def set_rotation(self, new_rotation):
+        self.__rotation_matrix = new_rotation
+
+    def set_world(self, new_world):
+        self.__world = new_world
+
     def draw(self, screen, h, w):
         # draw the init drone position
         init_position = to_screen_coords(h, w, self.start_drone_positions[self.__filename])

@@ -18,7 +18,10 @@ class Body:
                                         "assets/map.png": np.array([160.0, 0.0]),
                                          "assets/p14.png": np.array([0.0, 100.0])
                                         }
-        self.__pos = self.start_drone_positions[filename]
+        if filename == None:
+            self.__pos = np.zeros(2)
+        else:
+            self.__pos = self.start_drone_positions[filename]
 
         self.__altitude = 0
         self.__rotation_matrix = np.identity(3)

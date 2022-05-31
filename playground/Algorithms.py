@@ -1,7 +1,7 @@
 import random
 
 # https://igraph.org/python/tutorial/latest/tutorial.html
-import igraph as ig
+# import igraph as ig
 
 import numpy as np
 import math
@@ -162,7 +162,7 @@ class Algorithms:
         self.__number_of_rotations = 0
         self.__done180 = False
 
-        self.__g = ig.Graph()
+        # self.__g = ig.Graph()
         self.__vertices_counter = 0
 
         self.__pf = ParticleFilter(N=50, x_dim=646, y_dim=1296)
@@ -180,6 +180,8 @@ class Algorithms:
         for p in self.draw_intersections_home : #intersction on the way back
             position = to_screen_coords(h, w, p)
             pygame.draw.circle(screen, color=(0, 0, 255), center=position, radius=10)
+        
+        self.__pf.draw(screen, h, w)
   
     # def follow_rotation(self, angle):
     #     tr_mat = create_rotation_matrix_yx(angle)
@@ -309,19 +311,15 @@ class Algorithms:
             self.__first_step = False
             
             # add home to graph
-            self.__g.add_vertex()
-            self.__g.vs[self.__vertices_counter]["distances"] = norm(home)
+            # self.__g.add_vertex()
+            # self.__g.vs[self.__vertices_counter]["distances"] = norm(home)
 
             self.__vertices_counter = self.__vertices_counter + 1
 
         epsilon = 0.3
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
-        self.__pf.predict(u=(self.__data["v_x"], self.__data["v_y"]), map=local_map, std=(0, 0), )
-        self.__pf.weight(z=self.__current, var=0)
-        self.__pf.resample()
-
-        print("pos: ", self.__pf.estimate())
+        
 
         if self.__data["battery"] > 55:
             self.BAT(epsilon)
@@ -343,16 +341,16 @@ class Algorithms:
                 # self.rotate180()
                 self.RotateCW_90()
                 self.RotateCW_90()
-                layout = self.__g.layout("kk")
-                ig.plot(self.__g, layout=layout)
+                # layout = self.__g.layout("kk")
+                # ig.plot(self.__g, layout=layout)
                 self.__done180 = True
             else:
                 self.__second_go_home = False
             
         elif self.__data["battery"] > 0 and not self.__arrive_home:
-            layout = self.__g.layout("kk")
-            ig.plot(self.__g, layout=layout)
-            self.GoHome(epsilon)
+            # layout = self.__g.layout("kk")
+            # ig.plot(self.__g, layout=layout)
+            self.GoHome(epsilon, local_map)
 
         elif self.__data["battery"] <= 0:
             print("Timeout!")
@@ -392,35 +390,35 @@ class Algorithms:
             mean = np.mean(self.__wall_distance)
             std = np.std(self.__wall_distance)
             dir = self.__cum_gyro
-            sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
+            # sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
             if self.__delta_c_t > 1.5:
-                if len(sim_edge) == 0 :
-                    # Add to graph:
-                    self.__g.add_vertex()
-                    self.__inter_vs.append(norm_current)
-                    self.__g.vs[self.__vertices_counter]["distance"] = np.mean(self.__inter_vs)
-                    self.__inter_vs = []
-                    self.__g.add_edge(self.__vertices_counter - 1, self.__vertices_counter)
-                    self.__g.es[self.__vertices_counter -1]["time"] = time
-                    self.__g.es[self.__vertices_counter -1]["mean_dis"] = mean
-                    self.__g.es[self.__vertices_counter -1]["std_dis"] = std
-                    self.__g.es[self.__vertices_counter -1]["cum_gyro"] = dir
-                    print("dir",dir)
-                    if self.counter_loop > 0:
-                        self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
-                        self.counter_loop = 0
+                # if len(sim_edge) == 0 :
+                #     # Add to graph:
+                #     self.__g.add_vertex()
+                #     self.__inter_vs.append(norm_current)
+                #     self.__g.vs[self.__vertices_counter]["distance"] = np.mean(self.__inter_vs)
+                #     self.__inter_vs = []
+                #     self.__g.add_edge(self.__vertices_counter - 1, self.__vertices_counter)
+                #     self.__g.es[self.__vertices_counter -1]["time"] = time
+                #     self.__g.es[self.__vertices_counter -1]["mean_dis"] = mean
+                #     self.__g.es[self.__vertices_counter -1]["std_dis"] = std
+                #     self.__g.es[self.__vertices_counter -1]["cum_gyro"] = dir
+                #     print("dir",dir)
+                #     if self.counter_loop > 0:
+                #         self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
+                #         self.counter_loop = 0
                         
-                    self.__vertices_counter = self.__vertices_counter + 1
-                    # layout = self.__g.layout("kk")
-                    # ig.plot(self.__g, layout=layout)
-                    self.draw_intersections.append(self.__controller.position)
-                    self.__wall_distance = []
-                    self.__cum_gyro = 0
-                    self.__delta_c_t = 0
-                else:
-                    self.__g.delete_edges(sim_edge[0])
-                    self.counter_loop +=1
-
+                #     self.__vertices_counter = self.__vertices_counter + 1
+                #     # layout = self.__g.layout("kk")
+                #     # ig.plot(self.__g, layout=layout)
+                #     self.draw_intersections.append(self.__controller.position)
+                #     self.__wall_distance = []
+                #     self.__cum_gyro = 0
+                #     self.__delta_c_t = 0
+                # else:
+                #     self.__g.delete_edges(sim_edge[0])
+                #     self.counter_loop +=1
+                pass
             else:
                 self.__inter_vs.append((norm_current))
 
@@ -428,15 +426,22 @@ class Algorithms:
         self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
         self.__delta_c_t += self.__delta_t 
 
-    def GoHome(self, epsilon):        
+    def GoHome(self, epsilon, local_map):
+
+        self.__pf.predict(u=(self.__data["v_x"], self.__data["v_y"], self.__data["gyro"]), map=local_map, std=(0, 0), )
+        self.__pf.weight(z=self.__current, var=0)
+        self.__pf.resample()
+
+        print("pos: ", self.__pf.estimate())
+
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
         norm_current = norm(norm_current)
-        rmse = rmse(norm_current, self.home)
+        error = rmse(norm_current, self.home)
         
-        print("min(rmses): ", rmse)
+        print("min(rmses): ", error)
 
-        if min(rmse) < 0.1:
+        if min(error) < 0.1:
                 self.__arrive_home = True
                 
         if self.__current[0] < self.emengercy_tresh:
@@ -457,20 +462,21 @@ class Algorithms:
             mean = np.mean(self.__wall_distance)
             std = np.std(self.__wall_distance)
             dir = self.__cum_gyro
-            sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
+            # sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
             if self.__delta_c_t > 1:
-                if len(sim_edge) != 0 :
-                    # Add to graph:
-                    self.__inter_vs.append(norm_current)
-                    vs_mean =  np.mean(self.__inter_vs)
-                    self.__inter_vs = []
-                    sim_vs = [rmse(e.source,vs_mean) for e in sim_edge]
-                    edge = sim_edge[np.argmin(sim_vs)]
-                    # if edge["cum_gyro"] >= 90:
-                    #     self.RotateCCW_90()
-                    # elif edge["cum_gyro"] <= -90:
-                    #     self.RotateCW_90()
-                    self.draw_intersections_home.append(self.__controller.position)
+                # if len(sim_edge) != 0 :
+                #     # Add to graph:
+                #     self.__inter_vs.append(norm_current)
+                #     vs_mean =  np.mean(self.__inter_vs)
+                #     self.__inter_vs = []
+                #     sim_vs = [rmse(e.source,vs_mean) for e in sim_edge]
+                #     edge = sim_edge[np.argmin(sim_vs)]
+                #     # if edge["cum_gyro"] >= 90:
+                #     #     self.RotateCCW_90()
+                #     # elif edge["cum_gyro"] <= -90:
+                #     #     self.RotateCW_90()
+                #     self.draw_intersections_home.append(self.__controller.position)
+                pass
             else:
                 self.__inter_vs.append((norm_current))
                 

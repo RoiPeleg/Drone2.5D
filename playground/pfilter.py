@@ -14,7 +14,7 @@ from turtle import position
 
 
 import warnings
-
+import pygame
 from playground.utils.transform import create_rotation_matrix_yx
 from filterpy.monte_carlo import stratified_resample, residual_resample
 import matplotlib as mpl
@@ -24,6 +24,7 @@ import numpy as np
 from numpy.random import randn, random, uniform, multivariate_normal, seed
 import scipy.stats
 
+from playground.robot import Robot 
 from playground.Lidar import Lidar 
 from playground.rawsensorsview import RawSensorsView
 from playground.environment.world import World
@@ -32,12 +33,12 @@ class ParticleFilter(object):
 
     def __init__(self, N, x_dim, y_dim, resolution=2.5):
         self.sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
-        self.sensors_view = RawSensorsView(y_dim, x_dim, 0)
+        self.sensor_view = RawSensorsView(y_dim, x_dim, 0)
         self.world = World(None, 0, np.full((y_dim, x_dim), 255, dtype=np.uint8))
 
         self.particles = np.empty((N, 3))  # x, y, heading
-        # self.sensors = [Lidar(dist_range=120, fov=90, mu=0, sigma=0.02) for _ in range(N)]
-        # self.particles [Robot(None, self.sensors[i], self.world, None) for i in range(N)]
+        
+        self.robot = Robot(None, self.sensor, self.world, None)
         self.dist_from_wall = np.empty((N, 4)) # the distance from wall arrond
 
         self.N = N
@@ -48,31 +49,50 @@ class ParticleFilter(object):
         # distribute particles randomly with uniform weight
         self.weights = np.empty(N)
         self.weights.fill(1./N)
-        self.particles[:, 0] = uniform(0, x_dim, size=N)
-        self.particles[:, 1] = uniform(0, y_dim, size=N)
+        self.particles[:, 0] = uniform(0, y_dim, size=N)
+        self.particles[:, 1] = uniform(0, x_dim, size=N)
         self.particles[:, 2] = uniform(0, 2*np.pi, size=N)
-
+    
+    def draw(self,screen, h, w):
+        for i in range(self.N):
+            pos = np.array([self.particles[i, 0], self.particles[i, 1]])
+            pygame.draw.circle(screen, color=(255, 0, 0), center=pos, radius=5)
 
     def predict(self, u, map, std):
         """ move according to control input u with noise std"""
 
-        self.particles[:, 2] += u[0] + randn(self.N) * std[0]
-        self.particles[:, 2] %= 2 * np.pi
+        # self.particles[:, 2] += u[0] + randn(self.N) * std[0]
+        # self.particles[:, 2] %= 2 * np.pi
 
-        d = u[1] + randn(self.N)
-        self.particles[:, 0] += np.cos(self.particles[:, 2]) * d
-        self.particles[:, 1] += np.sin(self.particles[:, 2]) * d
+        # d = u[1] + randn(self.N)
+        # self.particles[:, 0] += np.cos(self.particles[:, 2]) * d
+        # self.particles[:, 1] += np.sin(self.particles[:, 2]) * d
 
-        self.particles[:, 0:2] += u + randn(self.N, 2) * std
+        # self.particles[:, 0:2] += u + randn(self.N, 2) * std
+        self.world.set_map(map)
+        self.robot.set_world(self.world)
 
         for i in range(self.N):
-            pos = np.array([self.particles[i, 1], self.particles[i, 0]])
+            pos = np.array([self.particles[i, 0], self.particles[i, 1]])
             rotation_mat = create_rotation_matrix_yx(self.particles[i, 2])
-            self.world.set_map(map)
-
-            self.sensor.scan(pos, rotation_mat, self.world)
-            self.sensors_view.take_measurements(None, self.sensor, position=pos, rotation=rotation_mat)
-            ds = self.sensors_view.distance_from_obstacles * self.__resolution / 100
+            
+            self.robot.set_pos(pos)
+            self.robot.set_rotation(rotation_mat)
+            
+            self.robot.rotate(u[2])
+            self.robot.move(u[0], u[1])
+                        
+            #check if robot moved
+            if np.sum(pos - self.robot.position) < 0.0001:
+                print('not changes: ', i)
+                self.weights[i] = 0
+            
+            self.sensor.scan(self.robot.position, self.robot.rotation, self.world)
+            self.sensor_view.take_measurements(None, self.sensor, self.robot.position, self.robot.rotation)
+            
+            self.particles[i, 0:2] = self.robot.position
+            self.particles[i, 2] += u[2]
+            ds = self.sensor_view.distance_from_obstacles * self.__resolution / 100
             self.dist_from_wall[i] = np.array([ds[4], ds[14], ds[0], ds[9]])
 
     def weight(self, z, var):

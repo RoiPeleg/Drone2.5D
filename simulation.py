@@ -127,6 +127,7 @@ def main():
 
             world.draw(screen, sensors_view.map)
             robot.draw(screen, world.height, world.width)
+            
             algo.draw(screen, world.height, world.width)
             sensors_view.draw(screen, offset=world.width)
 
