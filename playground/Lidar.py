@@ -16,15 +16,9 @@ class Lidar:
         self.__mu = mu
         self.__sigma = sigma
         self.__obstacles = None
-
         # generate scan arc coordinates
         num_scan_points = 20
         self.__thetas = np.linspace(0, 2 * np.pi, num_scan_points)
-        # self.__thetas = np.array([0, np.pi/2, np.pi, 1.5 * np.pi])
-        
-        # x = np.cos(theta)
-        # y = np.sin(theta)
-        # self.__circle_coords = np.stack([x, y], axis=1)
 
     def get_obstacles(self):
         return self.__obstacles
@@ -37,14 +31,10 @@ class Lidar:
         direction = make_direction(rotation)
         angle = np.arctan2(direction[1],direction[0])
         angle = np.degrees(angle) * (-1)
-        # for circle_dir in self.__circle_coords:
         for theta in self.__thetas:
             scan_angle = (np.degrees(theta) + angle) % 360
             scan_angle = create_rotation_matrix_yx(scan_angle)
             direction = make_direction(scan_angle)
-            # dot_product = np.dot(direction, circle_dir)
-            # scan_angle = math.acos(np.clip(dot_product, -1., 1))
-            # scan_angle = np.degrees(scan_angle)
 
             end_pos = (start_pos + direction * self.__dist_range).astype(int)
             start_pos = start_pos.astype(int)

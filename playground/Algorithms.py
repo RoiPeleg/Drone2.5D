@@ -6,10 +6,8 @@ import random
 import numpy as np
 import math
 import pygame
-from playground.utils.transform import to_screen_coords,create_rotation_matrix_yx, make_direction
+from playground.utils.transform import to_screen_coords
 np.random.seed(42)
-
-from playground.pfilter import ParticleFilter
 
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
@@ -106,9 +104,12 @@ class PID():
         self.__first_run = True
     
 class Algorithms:
-    def __init__(self, controller, delta_t=0.1):
+    def __init__(self, controller, odometry, delta_t=0.1):
         
         self.__controller = controller
+        self.__odometry = odometry
+        self.__local_pos = odometry.position
+        self.__rotation = odometry.rotation
         self.__state = None
         self.__data = None
         
@@ -121,34 +122,25 @@ class Algorithms:
         # time constant
         self.__delta_t = delta_t
         
-        # BAT and goHome
-        self.__time_to_home = None
+        # distances vector
         self.__current = None
         self.__prev = None
-        
-        # self.__cum_distance = 0 
-        # self.__local_pose =  np.array([0.0, 0.0]) # calc from opticalflow and gyro
-        # self.__rotation_matrix = np.matmul(np.identity(3), create_rotation_matrix_yx(180)) 
 
         #PIDs
         self.PID_p = PID(1.5,0.004,0.4, disired_distance=0.1)
-        self.PID_r = PID(5.8,6.0,2.0)
+        self.PID_r = PID(6.0,6.0,1.0)
 
         # keeps track of itersactions passed
         self.draw_intersections = []
         self.draw_intersections_home = []
-        self.to_draw_home = []
 
-        self.prev_norm_current = []
-        self.start_intersection_pose = []
-
-        self.start_intersection_flag = False
         self.__inter_vs = []
         
         self.__wall_distance = []
         self.__cum_gyro = 0
         self.__delta_c_t = 0
         self.counter_loop = 0
+
         # BAT tresholds
         self.emengercy_tresh = 0.3
         self.tunnel_tresh = 0.75
@@ -180,35 +172,12 @@ class Algorithms:
         for p in self.draw_intersections_home : #intersction on the way back
             position = to_screen_coords(h, w, p,start)
             pygame.draw.circle(screen, color=(0, 0, 255), center=position, radius=10)
-        
-        # self.__pf.draw(screen, h, w)
-  
-    # def follow_rotation(self, angle):
-    #     tr_mat = create_rotation_matrix_yx(angle)
-    #     self.__rotation_matrix = np.matmul(self.__rotation_matrix, tr_mat)
-    #     # self.__rotation_matrix = self.__controller.robot.rotation
-        
-    # def follow_local_pos(self):
-    #     # x axis
-    #     direction = make_direction(self.__rotation_matrix)
-    #     # print("x_direction: " , direction)
-    #     pos = self.__local_pose.copy()
-    #     # pos += direction * (self.__data['v_x'] * 100) / 2.5 * self.__delta_t
-    #     pos += direction * self.__controller.x
-    #     # y axis
-    #     direction = make_direction(np.matmul(self.__rotation_matrix, create_rotation_matrix_yx(-90)))
-    #     # print("y_direction: " , direction)
-    #     pos += direction * self.__controller.y 
-    #     # pos += (-1 ) * direction * (self.__data['v_y'] * 100) / 2.5 * self.__delta_t
-
-    #     self.__local_pose = pos
-        
-    #   #self.__cum_distance += math.sqrt(self.__controller.x**2 + self.__controller.y**2) * self.__delta_t
 
     def sample_data(self):
         self.__data = self.__controller.sensors_data()
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
-        
+        self.__local_pos = self.__odometry.position
+        self.__rotation = self.__odometry.rotation
         if self.__first_step:
             self.__prev = self.__current.copy()
 
@@ -244,9 +213,6 @@ class Algorithms:
         u_t_r_t = self.PID_r.compute(self.__data[wall_align])
         self.__controller.roll(u_t_r_t)
 
-            
-        # self.follow_local_pos()
-
     def Fly_Forward(self, wall_align = 'd_right'):
         self.__state = 'Forward'
         u_t_p = self.PID_p.compute(self.__data['d_front'])
@@ -254,36 +220,29 @@ class Algorithms:
         sign = 1
         if wall_align == 'd_left':
             sign = -1
-        
         # self.PID_r.set_disired_distance(0.5)
         u_t_r = sign * self.PID_r.compute(self.__data[wall_align])        
         self.__controller.roll(u_t_r)
         
-        # self.follow_local_pos()
-
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
         self.__controller.yaw(10)
         self.__cum_gyro += 10
-        # self.follow_rotation(10)
     
     def RotateCW(self):
         self.__state = 'Rotate CW'
         self.__controller.yaw(-10)
         self.__cum_gyro -= 10
-        # self.follow_rotation(-10)
 
     def RotateCW_90(self):
         self.__state = 'Rotate 90CW'
         self.__controller.yaw(-90)
         self.__cum_gyro -= 90
-        # self.follow_rotation(-90)
     
     def RotateCCW_90(self):
         self.__state = 'Rotate 90CCW'
         self.__controller.yaw(90)
         self.__cum_gyro += 90
-        # self.follow_rotation(90)
 
     # def rotate180(self):
     #     self.__state = 'Rotate 180'
@@ -320,8 +279,6 @@ class Algorithms:
         epsilon = 0.3
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
-        
-
         if self.__data["battery"] > 55:
             self.BAT(epsilon)
 
@@ -342,8 +299,6 @@ class Algorithms:
                 # self.rotate180()
                 self.RotateCW_90()
                 self.RotateCW_90()
-                # layout = self.__g.layout("kk")
-                # ig.plot(self.__g, layout=layout)
                 self.__done180 = True
             else:
                 self.__second_go_home = False
@@ -369,6 +324,9 @@ class Algorithms:
 
 
     def BAT(self, epsilon):
+        print("position: ", self.__local_pos)
+        # print("rotation: ", self.__rotation)
+
         if self.__current[0] < self.emengercy_tresh or (self.__data['v_x'] == 0 and self.__data['v_y'] == 0 and self.__data['pitch'] != 0):
             self.Emengercy()
         elif self.__current[0] < self.front_tresh:
@@ -423,19 +381,10 @@ class Algorithms:
             else:
                 self.__inter_vs.append((norm_current))
 
-            # print('delta_c:', self.__delta_c_t)
         self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
         self.__delta_c_t += self.__delta_t 
 
     def GoHome(self, epsilon, local_map):
-        # self.__pf.predict(u=(self.__data["v_x"], self.__data["v_y"], self.__data["gyro"]), map=local_map, std=(0, 0), )
-        # d = self.__data["ds"]
-        # d[d == np.inf] = 3.0
-        # self.__pf.weight(z=d, var=0)
-        # self.__pf.resample()
-
-        #print("pos: ", self.__pf.estimate())
-
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
         norm_current = norm(norm_current)

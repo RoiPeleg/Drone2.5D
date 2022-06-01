@@ -15,7 +15,7 @@ class World:
     def __init__(self, map_file_name, max_z, matrix=None):
         self.__map_file_name = map_file_name
         self.start_drone_positions = {"assets/p15.png": np.array([120, 610]),
-                                        "assets/p11.png": np.array([250, -570]),
+                                        "assets/p11.png": np.array([70, 80]),
                                         "assets/map.png": np.array([160, 0]),
                                          "assets/p14.png": np.array([0, 100]),
                                          "assets/p16.png": np.array([200, -350])
@@ -62,7 +62,8 @@ class World:
         self.__map = new_map.copy()
 
     def draw(self, screen, sensor_map):
-        transposed_map = np.transpose(0.5 * self.__map.copy() + 0.5 * sensor_map.copy())
+        # transposed_map = np.transpose(0.5 * self.__map.copy() + 0.5 * sensor_map.copy())
+        transposed_map = np.transpose(self.__map.copy())
         surf = pygame.surfarray.make_surface(transposed_map)
         surf = pygame.transform.scale(surf, (self.width, self.height)) 
         screen.blit(surf, (0, 0))

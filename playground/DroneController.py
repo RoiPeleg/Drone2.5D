@@ -33,18 +33,6 @@ class DroneController:
         self.__yaw = 0
         self.__counter = 0
 
-        self.x = 0
-        self.y = 0
-        self.last_change = 0
-    
-    @property
-    def position(self):
-        return self.__robot.position
-
-    @property
-    def robot(self):
-        return self.__robot
-
     def move(self):
         sign = 0
         if self.__counter > 0:
@@ -53,7 +41,6 @@ class DroneController:
             elif self.__yaw > 0:
                 sign = 1
 
-            self.last_change = sign * self.__angle_inc
             self.__robot.rotate(sign * self.__angle_inc)
             self.__counter -= 1
             self.__yaw -= sign * self.__angle_inc
@@ -76,10 +63,10 @@ class DroneController:
 
         self.__speed_y = clip(self.__speed_y, self.__min_speed, self.__max_speed)
         
-        self.x = self.__speed_x * self.__delta_t
-        self.y = self.__speed_y * self.__delta_t
+        x = self.__speed_x * self.__delta_t
+        y = self.__speed_y * self.__delta_t
 
-        self.__robot.move(self.x, self.y)
+        self.__robot.move(x, y)
 
     def yaw(self, angle):
         self.__yaw = angle

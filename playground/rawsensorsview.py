@@ -97,8 +97,8 @@ class RawSensorsView:
             else:
                 obstacles = transform_points(obstacles[:, :2], rotation)
                 obstacles += np.array(position)[:2].astype(int)
-            obstacles[:, 0] = self.__h // 2 - obstacles[:, 0]
-            obstacles[:, 1] += self.__w // 2
+            obstacles[:, 0] = start[0] - obstacles[:, 0]
+            obstacles[:, 1] = start[1] + obstacles[:, 1]
             # noise in the odometry can break coordinates
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])

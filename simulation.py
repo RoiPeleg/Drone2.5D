@@ -57,10 +57,10 @@ def main():
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
 
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
-    algo = Algorithms(controller)
+    algo = Algorithms(controller, odometry)
 
-    #clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
+    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    # clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([2*world.width, world.height])

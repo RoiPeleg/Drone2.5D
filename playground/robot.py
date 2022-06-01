@@ -20,7 +20,6 @@ class Robot(Body):
     def move(self, dist_x, dist_y):
         if self.__world.allow_move(self.try_move(dist_x, dist_y), self.size):
             super().move(dist_x, dist_y)
-            # print('distx',dist_x,'disty',dist_y)
             if self.__odomentry != None:
                 self.__odomentry.track_move(dist_x, dist_y)
 
@@ -41,18 +40,12 @@ class Robot(Body):
     def sensor(self):
         return self.__sensor
     
-    def set_pos(self, new_pos):
-        self.__pos = new_pos
-    
-    def set_rotation(self, new_rotation):
-        self.__rotation_matrix = new_rotation
-
     def set_world(self, new_world):
         self.__world = new_world
 
     def draw(self, screen, h, w, start):
         # draw the init drone position
-        init_position = to_screen_coords(h, w,self.position,start)
+        init_position = to_screen_coords(h, w,[0,0],start)
         pygame.draw.circle(screen, color=(255, 0, 0), center=init_position, radius=10)
 
         # Draw robot in the real environment

@@ -94,7 +94,7 @@ class FrontEnd:
             return Frame(obstacles.copy())
         return None
 
-    def generate_local_map(self):
+    def generate_local_map(self, start):
         """
             Combines frames into local map
         """
@@ -120,15 +120,15 @@ class FrontEnd:
             points = points.astype(int)
 
             # convert them into map coordinate system
-            points[:, 0] = self.__h // 2 - points[:, 0]
-            points[:, 1] += self.__w // 2
+            points[:, 0] = start[0] - points[:, 0]
+            points[:, 1] = start[1] + points[:, 1]
             points = np.clip(points, [0, 0],
                              [self.__h - 1, self.__w - 1])
             # draw
             self.__local_map[points[:, 0], points[:, 1]] = 0
 
-    def draw(self, screen, offset):
-        self.generate_local_map()
+    def draw(self, screen, offset, start):
+        self.generate_local_map(start)
         transposed_map = np.transpose(self.__local_map)
         surf = pygame.surfarray.make_surface(transposed_map)
         screen.blit(surf, (offset, 0))
