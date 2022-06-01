@@ -11,7 +11,6 @@ np.random.seed(42)
 
 from playground.pfilter import ParticleFilter
 
-np.seterr(all='print')
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0

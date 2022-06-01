@@ -34,7 +34,7 @@ class ParticleFilter(object):
     def __init__(self, N, x_dim, y_dim, resolution=2.5):
         self.sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
         self.sensor_view = RawSensorsView(y_dim, x_dim, 0)
-        self.world = World(0, np.full((y_dim, x_dim), 255, dtype=np.uint8))
+        self.world = World(None, np.full((y_dim, x_dim), 255, dtype=np.uint8))
 
         self.particles = np.empty((N, 3))  # x, y, heading
         

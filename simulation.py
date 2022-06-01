@@ -77,7 +77,7 @@ def main():
             # lidar sensor:
             sensor.scan(robot.position, robot.rotation, world)
             robot.sensor.scan(robot.position, robot.rotation, world)
-            sensors_view.take_measurements(odometry, sensor)
+            sensors_view.take_measurements(odometry, sensor, world.drone_t)
             slam_front_end.add_key_frame(sensor)
             
             # battery sensor:

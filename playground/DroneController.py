@@ -108,16 +108,8 @@ class DroneController:
     def sensors_data(self):
         # [d0-d4, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ]
         
-        # self.__sensor_view.distance_from_obstacles[self.__sensor_view.distance_from_obstacles == np.inf] = 3.0
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100.0
-        np.nan_to_num(ds,3.0)
-        # assert np.isinf(ds).any() == True, "data is inf"
-        # assert np.isnan(ds).any() == True, "data is nan"
         data = {
-            # "d_left": round(ds[14], 2),
-            # "d_right": round(ds[44], 2),
-            # "d_front": round(ds[0], 2),
-            # "d_back": round(ds[29], 2),
             "d_left": round(ds[4], 2),
             "d_right": round(ds[14], 2),
             "d_front": round(ds[0], 2),

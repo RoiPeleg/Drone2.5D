@@ -48,12 +48,12 @@ class RawSensorsView:
         self.__prev_angle = current_ang
         
     # mesures lidar distances
-    def take_measurements(self, odometry, sensor, position=None, rotation=None):
+    def take_measurements(self, odometry, sensor, start, position=None, rotation=None):
         # Process odometery
         if odometry != None:
-            position = to_screen_coords(self.__h, self.__w, odometry.position)
+            position = to_screen_coords(self.__h, self.__w, odometry.position, start)
         else:
-            position = to_screen_coords(self.__h, self.__w, position)
+            position = to_screen_coords(self.__h, self.__w, position, start)
         
         if self.__prev_pos is not None:
             rr, cc, _ = line_aa(self.__prev_pos[1], self.__prev_pos[0], position[1], position[0])

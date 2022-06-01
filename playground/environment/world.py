@@ -14,11 +14,11 @@ class World:
 
     def __init__(self, map_file_name, max_z, matrix=None):
         self.__map_file_name = map_file_name
-        self.start_drone_positions = {"assets/p15.png": np.array([120.0, 610.0]),
-                                        "assets/p11.png": np.array([250.0, -570.0]),
-                                        "assets/map.png": np.array([160.0, 0.0]),
-                                         "assets/p14.png": np.array([0.0, 100.0]),
-                                         "assets/p16.png": np.array([200.0, -350.0])
+        self.start_drone_positions = {"assets/p15.png": np.array([120, 610]),
+                                        "assets/p11.png": np.array([250, -570]),
+                                        "assets/map.png": np.array([160, 0]),
+                                         "assets/p14.png": np.array([0, 100]),
+                                         "assets/p16.png": np.array([200, -350])
                                         }
         print(map_file_name)
         self.drone_t = self.start_drone_positions[self.__map_file_name]
