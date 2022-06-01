@@ -14,6 +14,14 @@ class World:
 
     def __init__(self, map_file_name, max_z, matrix=None):
         self.__map_file_name = map_file_name
+        self.start_drone_positions = {"assets/p15.png": np.array([120.0, 610.0]),
+                                        "assets/p11.png": np.array([250.0, -570.0]),
+                                        "assets/map.png": np.array([160.0, 0.0]),
+                                         "assets/p14.png": np.array([0.0, 100.0]),
+                                         "assets/p16.png": np.array([200.0, -350.0])
+                                        }
+        print(map_file_name)
+        self.drone_t = self.start_drone_positions[self.__map_file_name]
         self.__width = 0
         self.__height = 0
         self.__map = None
@@ -65,8 +73,8 @@ class World:
         return num == 0
 
     def get_obstacles_in_circle(self, pos, radius):
-        x = self.__width // 2 + pos[1]
-        y = self.__height // 2 - pos[0]
+        x = self.drone_t[1] + pos[1]
+        y = self.drone_t[0] - pos[0]
         x = np.clip(x, 0, self.__width).astype(int)
         y = np.clip(y, 0, self.__height).astype(int)
 
@@ -77,13 +85,13 @@ class World:
         obstacles_mask = self.__map[region_coords[:, 0], region_coords[:, 1]] != 255
         region_coords = region_coords[obstacles_mask]
         # convert to world coordinates
-        region_coords[:, 0] = h // 2 - region_coords[:, 0]
-        region_coords[:, 1] = region_coords[:, 1] - w // 2
+        region_coords[:, 0] = self.drone_t[0] - region_coords[:, 0]
+        region_coords[:, 1] = region_coords[:, 1] - self.drone_t[1]
         return region_coords
 
     def is_obstacle(self, pos):
-        x = self.__width // 2 + pos[1]
-        y = self.__height // 2 - pos[0]
+        x = self.drone_t[1] + pos[1]
+        y = self.drone_t[0] - pos[0]
         if 0 <= y < self.__height and 0 <= x < self.__width:
             if self.__map[y, x] != 255:
                 point_id = self.__hilbert_curve.distance_from_point([y, x])

@@ -105,8 +105,6 @@ class RawSensorsView:
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
             self.__local_map[obstacles[:, 0], obstacles[:, 1]] = 0
 
-
-
     @property
     def distance_from_obstacles(self):
         return self.__distance_from_obstacles

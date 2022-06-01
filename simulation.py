@@ -50,9 +50,9 @@ def main():
     # Create simulation objects
     delta_t = 0.1
     world = World(args.filename, max_z= 3)
-    odometry = Odometry(args.filename, mu=0, sigma=0.02, delta_t=delta_t)  # noised measurements
+    odometry = Odometry(mu=0, sigma=0.02, delta_t=delta_t)  # noised measurements
     sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
-    robot = Robot(odometry, sensor, world, args.filename)
+    robot = Robot(odometry, sensor, world)
     sensors_view = RawSensorsView(world.height, world.width, world.max_z)
     slam_front_end = playground.slam.frontend.FrontEnd(world.height, world.width)
 
@@ -115,7 +115,6 @@ def main():
                     running = False
 
                 if event.type == pygame.KEYDOWN:
-                    
                     if event.key == pygame.K_LEFT:
                         robot.rotate(rotation_step)
                     if event.key == pygame.K_RIGHT:
@@ -126,9 +125,9 @@ def main():
                         robot.move(-moving_step, 0)
 
             world.draw(screen, sensors_view.map)
-            robot.draw(screen, world.height, world.width)
+            robot.draw(screen, world.height, world.width,world.drone_t)
             
-            algo.draw(screen, world.height, world.width)
+            algo.draw(screen, world.height, world.width,world.drone_t)
             sensors_view.draw(screen, offset=world.width)
 
             data_sensors = controller.sensors_data()
@@ -166,13 +165,11 @@ def main():
             text_surface = font.render(f'down: {data_sensors["d_down"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(930, 600))
         
-
             text_surface = font.render(f'optical: [{data_sensors["v_x"]}, {data_sensors["v_y"]}]', True, (255, 0, 0))
             screen.blit(text_surface, dest=(1100, 575))
             
             text_surface = font.render(f'gyro: {data_sensors["gyro"]}', True, (255, 0, 0))
             screen.blit(text_surface, dest=(1100, 600))
-            
             
             pygame.display.flip()
 

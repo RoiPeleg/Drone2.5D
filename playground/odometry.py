@@ -7,8 +7,8 @@ import random
 random.seed(42)
 
 class Odometry(Body):
-    def __init__(self, filename, mu, sigma, delta_t=0.1):
-        super().__init__(filename)
+    def __init__(self, mu, sigma, delta_t=0.1):
+        super().__init__()
         self.__mu = mu
         self.__sigma = sigma
         self.__angle = 0

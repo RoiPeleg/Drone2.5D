@@ -34,7 +34,7 @@ class ParticleFilter(object):
     def __init__(self, N, x_dim, y_dim, resolution=2.5):
         self.sensor = Lidar(dist_range=120, fov=90, mu=0, sigma=0.02)  # noised measurements
         self.sensor_view = RawSensorsView(y_dim, x_dim, 0)
-        self.world = World(None, 0, np.full((y_dim, x_dim), 255, dtype=np.uint8))
+        self.world = World(0, np.full((y_dim, x_dim), 255, dtype=np.uint8))
 
         self.particles = np.empty((N, 3))  # x, y, heading
         
@@ -98,6 +98,9 @@ class ParticleFilter(object):
     def weight(self, z, var):
         self.dist_from_wall[self.dist_from_wall == np.inf] = 3.0
         dist = np.sqrt(np.sum((self.dist_from_wall - z),axis=1)**2) #np.sqrt((self.dist_from_wall[:, 0] - z)**2 + (self.dist_from_wall[:, 1] - z[1])**2 + (self.dist_from_wall[:, 2] - z[1])**2 + (self.dist_from_wall[:, 3] - z[1])**2)
+        dist[dist == np.inf] = 3.0
+        assert np.isinf(dist).any() == True, "dist is inf"
+        assert np.isnan(dist).any() == True, "dist is nan"
         # simplification assumes variance is invariant to world projection
         n = scipy.stats.norm(0, np.sqrt(var))
         prob = n.pdf(dist)
@@ -108,7 +111,7 @@ class ParticleFilter(object):
         prob += 1.e-6
         self.weights += prob
         self.weights /= sum(self.weights) # normalize
-
+        print(sum(self.weights))
 
     def neff(self):
         return 1. / np.sum(np.square(self.weights))

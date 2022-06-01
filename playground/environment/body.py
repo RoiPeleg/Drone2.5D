@@ -8,22 +8,8 @@ class Body:
         Physical environment simulation element
     """
 
-    def __init__(self, filename):
-
-        self.filename = filename
-        
+    def __init__(self):        
         self.__pos = np.zeros(2)
-        self.start_drone_positions = {"assets/p15.png": np.array([120.0, 610.0]),
-                                        "assets/p11.png": np.array([250.0, -570.0]),
-                                        "assets/map.png": np.array([160.0, 0.0]),
-                                         "assets/p14.png": np.array([0.0, 100.0]),
-                                         "assets/p16.png": np.array([200.0, -180.0])
-                                        }
-        if filename == None:
-            self.__pos = np.zeros(2)
-        else:
-            self.__pos = self.start_drone_positions[filename]
-
         self.__altitude = 0
         self.__rotation_matrix = np.identity(3)
 

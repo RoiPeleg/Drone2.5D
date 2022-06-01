@@ -80,7 +80,7 @@ class Lidar:
 
         self.__obstacles = np.hstack([obstacles_coords, obstacles_ids])
 
-    def draw(self, screen, h, w, position, direction):
+    def draw(self, screen, h, w, position, direction,start):
         color = (128, 128, 128)
         start_pos = pygame.math.Vector2(position[0], position[1])
         dir = pygame.math.Vector2(direction[0], direction[1])
@@ -88,7 +88,7 @@ class Lidar:
         for i in range(0,4):
             dir = dir.rotate(i*self.__fov)
             end_pos = start_pos + dir * self.__dist_range
-            start_pos = to_screen_coords(h, w, start_pos)
-            end_pos = to_screen_coords(h, w, end_pos, clip=False)
+            start_pos = to_screen_coords(h, w, start_pos,start)
+            end_pos = to_screen_coords(h, w, end_pos, start, clip=False)
             pygame.draw.line(screen, color=color, start_pos=start_pos, end_pos=end_pos, width=2)
             start_pos = pygame.math.Vector2(position[0], position[1])
