@@ -10,9 +10,9 @@ for more information.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from turtle import position
+# from turtle import position
 
-
+from playground.utils.transform import to_screen_coords
 import warnings
 import pygame
 from playground.utils.transform import create_rotation_matrix_yx
@@ -39,7 +39,7 @@ class ParticleFilter(object):
         self.particles = np.empty((N, 3))  # x, y, heading
         
         self.robot = Robot(None, self.sensor, self.world, None)
-        self.dist_from_wall = np.empty((N, 4)) # the distance from wall arrond
+        self.dist_from_wall = np.empty((N, 20)) # the distance from wall arrond
 
         self.N = N
         self.x_dim = x_dim
@@ -49,14 +49,14 @@ class ParticleFilter(object):
         # distribute particles randomly with uniform weight
         self.weights = np.empty(N)
         self.weights.fill(1./N)
-        self.particles[:, 0] = uniform(0, y_dim, size=N)
-        self.particles[:, 1] = uniform(0, x_dim, size=N)
+        self.particles[:, 0] = uniform(0 - y_dim//2.0, y_dim//2.0, size=N)
+        self.particles[:, 1] = uniform(0 - x_dim//2.0, x_dim//2.0, size=N)
         self.particles[:, 2] = uniform(0, 2*np.pi, size=N)
     
     def draw(self,screen, h, w):
         for i in range(self.N):
             pos = np.array([self.particles[i, 0], self.particles[i, 1]])
-            pygame.draw.circle(screen, color=(255, 0, 0), center=pos, radius=5)
+            pygame.draw.circle(screen, color=(255, 0, 0), center=to_screen_coords(h,w,(self.particles[i, 0], self.particles[i, 1])), radius=5)
 
     def predict(self, u, map, std):
         """ move according to control input u with noise std"""
@@ -83,21 +83,21 @@ class ParticleFilter(object):
             self.robot.move(u[0], u[1])
                         
             #check if robot moved
-            if np.sum(pos - self.robot.position) < 0.0001:
-                print('not changes: ', i)
-                self.weights[i] = 0
+            # if np.sum(pos - self.robot.position) < 0.0001:
+                # print('not changes: ', i)
+                # self.weights[i] = 0.0
             
             self.sensor.scan(self.robot.position, self.robot.rotation, self.world)
             self.sensor_view.take_measurements(None, self.sensor, self.robot.position, self.robot.rotation)
             
-            self.particles[i, 0:2] = self.robot.position
+            self.particles[i, 0:2] = np.clip(self.robot.position,np.array([0 - self.world.height//2,0 - self.world.width//2]),np.array([self.world.height//2, self.world.width//2]))
             self.particles[i, 2] += u[2]
-            ds = self.sensor_view.distance_from_obstacles * self.__resolution / 100
-            self.dist_from_wall[i] = np.array([ds[4], ds[14], ds[0], ds[9]])
+            ds = self.sensor_view.distance_from_obstacles * self.__resolution / 100.0
+            self.dist_from_wall[i] = np.array(ds) #np.array([ds[4], ds[14], ds[0], ds[9]])
 
     def weight(self, z, var):
-        dist = np.sqrt((self.dist_from_wall[:, 0] - z[0])**2 + (self.dist_from_wall[:, 1] - z[1])**2 + (self.dist_from_wall[:, 2] - z[1])**2 + (self.dist_from_wall[:, 3] - z[1])**2)
-
+        self.dist_from_wall[self.dist_from_wall == np.inf] = 3.0
+        dist = np.sqrt(np.sum((self.dist_from_wall - z),axis=1)**2) #np.sqrt((self.dist_from_wall[:, 0] - z)**2 + (self.dist_from_wall[:, 1] - z[1])**2 + (self.dist_from_wall[:, 2] - z[1])**2 + (self.dist_from_wall[:, 3] - z[1])**2)
         # simplification assumes variance is invariant to world projection
         n = scipy.stats.norm(0, np.sqrt(var))
         prob = n.pdf(dist)
@@ -105,7 +105,7 @@ class ParticleFilter(object):
         # particles far from a measurement will give us 0.0 for a probability
         # due to floating point limits. Once we hit zero we can never recover,
         # so add some small nonzero value to all points.
-        prob += 1.e-12
+        prob += 1.e-6
         self.weights += prob
         self.weights /= sum(self.weights) # normalize
 

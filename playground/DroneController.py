@@ -107,9 +107,9 @@ class DroneController:
     
     def sensors_data(self):
         # [d0-d4, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ]
-
-        ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100
-        
+        # print(self.__sensor_view.distance_from_obstacles)
+        self.__sensor_view.distance_from_obstacles[self.__sensor_view.distance_from_obstacles == np.inf] = 3.0
+        ds = ds * self.__resolution / 100.0
         data = {
             # "d_left": round(ds[14], 2),
             # "d_right": round(ds[44], 2),
@@ -119,6 +119,7 @@ class DroneController:
             "d_right": round(ds[14], 2),
             "d_front": round(ds[0], 2),
             "d_back": round(ds[9], 2),
+            "ds": ds,
             "d_down": round(self.__sensor_view.drone_height, 2),
             "d_up": round(self.__sensor_view.dis_from_roof, 2),
 

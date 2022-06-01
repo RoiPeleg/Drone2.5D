@@ -11,6 +11,7 @@ np.random.seed(42)
 
 from playground.pfilter import ParticleFilter
 
+np.seterr(all='raise')
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0
@@ -165,7 +166,7 @@ class Algorithms:
         # self.__g = ig.Graph()
         self.__vertices_counter = 0
 
-        self.__pf = ParticleFilter(N=50, x_dim=646, y_dim=1296)
+        self.__pf = ParticleFilter(N=50, x_dim=460, y_dim=819)
         self.home = None
 
     @property
@@ -427,9 +428,10 @@ class Algorithms:
         self.__delta_c_t += self.__delta_t 
 
     def GoHome(self, epsilon, local_map):
-
         self.__pf.predict(u=(self.__data["v_x"], self.__data["v_y"], self.__data["gyro"]), map=local_map, std=(0, 0), )
-        self.__pf.weight(z=self.__current, var=0)
+        d = self.__data["ds"]
+        d[d == np.inf] = 3.0
+        self.__pf.weight(z=d, var=0)
         self.__pf.resample()
 
         print("pos: ", self.__pf.estimate())
@@ -439,7 +441,7 @@ class Algorithms:
         norm_current = norm(norm_current)
         error = rmse(norm_current, self.home)
         
-        print("min(rmses): ", error)
+        # print("min(rmses): ", error)
 
         if np.min(error) < 0.1:
                 self.__arrive_home = True
