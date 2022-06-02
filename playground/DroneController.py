@@ -94,7 +94,8 @@ class DroneController:
     
     def sensors_data(self):
         # [d0-d4, yaw, Vx, Vy, Z, baro, bat, pitch, roll, accX, accY, accZ]
-        
+        if len(self.__sensor_view.distance_from_obstacles) == 0 :
+            return None
         ds = self.__sensor_view.distance_from_obstacles * self.__resolution / 100.0
         data = {
             "d_left": round(ds[4], 2),

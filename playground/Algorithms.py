@@ -8,7 +8,7 @@ import math
 import pygame
 from playground.utils.transform import to_screen_coords
 np.random.seed(42)
-
+np.seterr("ignore")
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0
@@ -327,7 +327,7 @@ class Algorithms:
         print("position: ", self.__local_pos)
         # print("rotation: ", self.__rotation)
 
-        if self.__current[0] < self.emengercy_tresh or (self.__data['v_x'] == 0 and self.__data['v_y'] == 0 and self.__data['pitch'] != 0):
+        if self.__current[0] < self.emengercy_tresh: #or (self.__data['v_x'] == 0 and self.__data['v_y'] == 0 and self.__data['pitch'] != 0):
             self.Emengercy()
         elif self.__current[0] < self.front_tresh:
             self.RotateCCW()

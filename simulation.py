@@ -131,7 +131,8 @@ def main():
             sensors_view.draw(screen, offset=world.width)
 
             data_sensors = controller.sensors_data()
-            
+            if data_sensors == None :
+                continue
             text_surface = font.render(f'Battery: {data_sensors["battery"]}%', True, (255, 0, 0))
             screen.blit(text_surface, dest=(550, 15))
             

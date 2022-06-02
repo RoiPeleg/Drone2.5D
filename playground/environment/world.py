@@ -18,7 +18,7 @@ class World:
                                         "assets/p11.png": np.array([70, 80]),
                                         "assets/map.png": np.array([160, 0]),
                                          "assets/p14.png": np.array([0, 100]),
-                                         "assets/p16.png": np.array([200, -350])
+                                         "assets/p16.png": np.array([50, 300])
                                         }
         print(map_file_name)
         self.drone_t = self.start_drone_positions[self.__map_file_name]

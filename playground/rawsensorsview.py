@@ -23,7 +23,7 @@ class RawSensorsView:
         self.__drone_height = 0
         self.__dis_from_roof = self.__z
 
-        self.__distance_from_obstacles = None
+        self.__distance_from_obstacles = []
 
     def take_measurements_battery(self,battery_prectange):
         self.__battery = battery_prectange
