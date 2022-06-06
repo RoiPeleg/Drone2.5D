@@ -13,21 +13,18 @@ import matplotlib.pyplot as plt
 np.random.seed(42)
 np.seterr("ignore")
 
-def bfs(grid, start, width, height):
+def bfs(grid, start, goal, width, height):
     print(start)
-    goal = (0,0)
     queue = collections.deque([[(start[0],start[1])]])
     seen = set([(start[0],start[1])])
     while queue:
         path = queue.popleft()
         x, y = path[-1]
         x, y = int(x), int(y)
-        print(x,y)
-        print(goal)
         if goal[0]==x and goal[1]==y:
             return path
         for x2, y2 in ((x+1,y), (x-1,y), (x,y+1), (x,y-1),(x-1,y-1),(x+1,y+1),(x+1,y-1),(x-1,y+1)):
-            if 0 <= x2 < height and 0 <= y2 < width and int(grid[y2][x2]) != 0 and (x2, y2) not in seen:
+            if 0 <= x2 < width and 0 <= y2 < height and int(grid[y2][x2]) != 0 and (x2, y2) not in seen:
                 queue.append(path + [(x2, y2)])
                 seen.add((x2, y2))
  
@@ -415,15 +412,25 @@ class Algorithms:
 
     def GoHome(self, epsilon, local_map, x, y):
 
-        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (np.max(y) + np.min(y) - 0) + 0 ,
-                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (np.max(x) + np.min(x) - 0) + 0])
+        min_x = int(min(self.__min_local_pos_x, np.min(x)))
+        min_y = int(min(self.__min_local_pos_y, np.min(y)))
+        max_x = int(max(self.__max_local_pos_x, np.max(x)))
+        max_y = int(max(self.__max_local_pos_y, np.max(y)))
 
-        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0
-        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0
+        # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+
+        home = np.array([( (0 - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (max_y + min_y - 0) + 0 ,
+                        ( (0 - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (max_x + min_x - 0) + 0])
+
+        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (max_y + min_y - 0) + 0 ,
+                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (max_x + min_x - 0) + 0])
+
+        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (max_x + min_x - 0) + 0
+        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (max_y + min_y - 0) + 0
         
         x = x.astype(int)
         y = y.astype(int)
-        local_map = np.zeros(shape=(np.max(y) + np.min(y) + 1, np.max(x) + np.min(x) + 1))
+        local_map = np.zeros(shape=(max_y + min_y + 1, max_x + min_x + 1))
         local_map[y,x] = 1
         local_map[:,0] = 1
         local_map[0,:] = 1
@@ -432,10 +439,13 @@ class Algorithms:
         
         print("pos: ",pos)
         
-        #plt.imshow(local_map)
-        #plt.show()
+        plt.imshow(local_map)
+        plt.plot(home[0], home[1], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
+        plt.plot(pos[0], pos[1], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
+
+        plt.show()
         
-        path = bfs(local_map, pos, local_map.shape[0],local_map.shape[1])
+        path = bfs(local_map, pos, home, local_map.shape[0],local_map.shape[1])
         print(path)
         # for i in path :
         #     self.draw_intersections.append(i)

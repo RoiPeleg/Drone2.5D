@@ -108,8 +108,8 @@ class RawSensorsView:
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
             
-            self.__y = np.concatenate((self.y, obstacles[:, 0]), axis=None)
-            self.__x = np.concatenate((self.x, obstacles[:, 1]), axis=None)
+            self.__y = np.concatenate((self.__y, obstacles[:, 0]), axis=None)
+            self.__x = np.concatenate((self.__x, obstacles[:, 1]), axis=None)
             
     @property
     def distance_from_obstacles(self):
