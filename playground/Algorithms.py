@@ -203,7 +203,7 @@ class Algorithms:
         self.__min_local_pos_x = min(self.__min_local_pos_x, self.__local_pos[1])
         self.__min_local_pos_y = min(self.__min_local_pos_y, self.__local_pos[0])
         self.__max_local_pos_x = max(self.__max_local_pos_x, self.__local_pos[1])
-        self.__max_local_pos_y =max(self.__max_local_pos_y, self.__local_pos[0])
+        self.__max_local_pos_y = max(self.__max_local_pos_y, self.__local_pos[0])
         self.__rotation = self.__odometry.rotation
         if self.__first_step:
             self.__prev = self.__current.copy()
@@ -412,25 +412,27 @@ class Algorithms:
 
     def GoHome(self, epsilon, local_map, x, y):
 
-        min_x = int(min(self.__min_local_pos_x, np.min(x)))
-        min_y = int(min(self.__min_local_pos_y, np.min(y)))
-        max_x = int(max(self.__max_local_pos_x, np.max(x)))
-        max_y = int(max(self.__max_local_pos_y, np.max(y)))
+        # min_x = int(min(self.__min_local_pos_x, np.min(x)))
+        # min_y = int(min(self.__min_local_pos_y, np.min(y)))
+        # max_x = int(max(self.__max_local_pos_x, np.max(x)))
+        # max_y = int(max(self.__max_local_pos_y, np.max(y)))
 
         # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
 
-        home = np.array([( (0 - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (max_y + min_y - 0) + 0 ,
-                        ( (0 - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (max_x + min_x - 0) + 0])
-
-        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (max_y + min_y - 0) + 0 ,
-                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (max_x + min_x - 0) + 0])
-
-        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (max_x + min_x - 0) + 0
-        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (max_y + min_y - 0) + 0
+        home = np.array([0 + np.min(y), 0 + np.min(x)])
+        home = np.array([( (home[0] - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0 ,
+                        ( (home[1] - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0])
         
-        x = x.astype(int)
+        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (np.max(y) + np.min(y) - 0) + 0 ,
+                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (np.max(x) + np.min(x) - 0) + 0])
+
+        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0
+        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0
+        
         y = y.astype(int)
-        local_map = np.zeros(shape=(max_y + min_y + 1, max_x + min_x + 1))
+        x = x.astype(int)
+       
+        local_map = np.zeros(shape=(np.max(y) + np.min(y) + 1, np.max(x) + np.min(x) + 1))
         local_map[y,x] = 1
         local_map[:,0] = 1
         local_map[0,:] = 1
@@ -440,8 +442,8 @@ class Algorithms:
         print("pos: ",pos)
         
         plt.imshow(local_map)
-        plt.plot(home[0], home[1], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
-        plt.plot(pos[0], pos[1], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
+        plt.plot(home[1], home[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
+        plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
 
         plt.show()
         
