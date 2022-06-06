@@ -131,6 +131,10 @@ class Algorithms:
         self.__controller = controller
         self.__odometry = odometry
         self.__local_pos = odometry.position
+        self.__min_local_pos_x = np.inf
+        self.__min_local_pos_y = np.inf
+        self.__max_local_pos_x = np.NINF
+        self.__max_local_pos_y = np.NINF
         self.__rotation = odometry.rotation
         self.__state = None
         self.__data = None
@@ -199,6 +203,10 @@ class Algorithms:
         self.__data = self.__controller.sensors_data()
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
         self.__local_pos = self.__odometry.position
+        self.__min_local_pos_x = np.min(self.__min_local_pos_x, self.__local_pos[1])
+        self.__min_local_pos_y = np.min(self.__min_local_pos_y, self.__local_pos[0])
+        self.__max_local_pos_x = np.max(self.__max_local_pos_x, self.__local_pos[1])
+        self.__max_local_pos_y = np.max(self.__max_local_pos_y, self.__local_pos[0])
         self.__rotation = self.__odometry.rotation
         if self.__first_step:
             self.__prev = self.__current.copy()
@@ -407,8 +415,10 @@ class Algorithms:
 
     def GoHome(self, epsilon, local_map, x, y):
 
-        pos = np.array([( (self.__local_pos[0] - 0) / (local_map.shape[0] - 0) ) * (np.max(y) + np.min(y) - 0) + 0 ,
-                        ( (self.__local_pos[1] - 0) / (local_map.shape[1] - 0) ) * (np.max(x) + np.min(x) - 0) + 0])
+        new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+
+        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (np.max(y) + np.min(y) - 0) + 0 ,
+                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (np.max(x) + np.min(x) - 0) + 0])
 
         x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0
         y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0
