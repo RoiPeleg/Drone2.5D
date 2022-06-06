@@ -1,4 +1,5 @@
 import random
+from threading import local
 
 # https://igraph.org/python/tutorial/latest/tutorial.html
 # import igraph as ig
@@ -7,8 +8,29 @@ import numpy as np
 import math
 import pygame
 from playground.utils.transform import to_screen_coords
+import collections
+import matplotlib.pyplot as plt
 np.random.seed(42)
 np.seterr("ignore")
+
+def bfs(grid, start, width, height):
+    print(start)
+    goal = (0,0)
+    queue = collections.deque([[(start[0],start[1])]])
+    seen = set([(start[0],start[1])])
+    while queue:
+        path = queue.popleft()
+        x, y = path[-1]
+        x, y = int(x), int(y)
+        print(x,y)
+        print(goal)
+        if goal[0]==x and goal[1]==y:
+            return path
+        for x2, y2 in ((x+1,y), (x-1,y), (x,y+1), (x,y-1),(x-1,y-1),(x+1,y+1),(x+1,y-1),(x-1,y+1)):
+            if 0 <= x2 < height and 0 <= y2 < width and int(grid[y2][x2]) != 0 and (x2, y2) not in seen:
+                queue.append(path + [(x2, y2)])
+                seen.add((x2, y2))
+ 
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0
@@ -262,7 +284,7 @@ class Algorithms:
     #         else :
     #             self.__done180 = True
 
-    def step(self, local_map):
+    def step(self, local_map, x, y):
         if self.__first_step:
             self.__controller.takeoff()
 
@@ -306,7 +328,7 @@ class Algorithms:
         elif self.__data["battery"] > 0 and not self.__arrive_home:
             # layout = self.__g.layout("kk")
             # ig.plot(self.__g, layout=layout)
-            self.GoHome(epsilon, local_map)
+            self.GoHome(epsilon, local_map,x,y)
 
         elif self.__data["battery"] <= 0:
             print("Timeout!")
@@ -324,7 +346,6 @@ class Algorithms:
 
 
     def BAT(self, epsilon):
-        print("position: ", self.__local_pos)
         # print("rotation: ", self.__rotation)
 
         if self.__current[0] < self.emengercy_tresh: #or (self.__data['v_x'] == 0 and self.__data['v_y'] == 0 and self.__data['pitch'] != 0):
@@ -384,7 +405,33 @@ class Algorithms:
         self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
         self.__delta_c_t += self.__delta_t 
 
-    def GoHome(self, epsilon, local_map):
+    def GoHome(self, epsilon, local_map, x, y):
+
+        pos = np.array([( (self.__local_pos[0] - 0) / (local_map.shape[0] - 0) ) * (np.max(y) + np.min(y) - 0) + 0 ,
+                        ( (self.__local_pos[1] - 0) / (local_map.shape[1] - 0) ) * (np.max(x) + np.min(x) - 0) + 0])
+
+        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0
+        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0
+        
+        x = x.astype(int)
+        y = y.astype(int)
+        local_map = np.zeros(shape=(np.max(y) + np.min(y) + 1, np.max(x) + np.min(x) + 1))
+        local_map[y,x] = 1
+        local_map[:,0] = 1
+        local_map[0,:] = 1
+
+        print("local: ",self.__local_pos)
+        
+        print("pos: ",pos)
+        
+        #plt.imshow(local_map)
+        #plt.show()
+        
+        path = bfs(local_map, pos, local_map.shape[0],local_map.shape[1])
+        print(path)
+        # for i in path :
+        #     self.draw_intersections.append(i)
+
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
         norm_current = norm(norm_current)

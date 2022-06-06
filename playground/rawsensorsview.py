@@ -12,6 +12,7 @@ class RawSensorsView:
         self.__z = world_z
         self.__map = np.full((world_h, world_w), 255, dtype=np.uint8)
         self.__local_map = np.full((world_h, world_w), 255, dtype=np.uint8)
+        self.__y, self.__x = np.empty(0), np.empty(0)
 
         self.__prev_pos = None
         self.__prev_pos_real = None
@@ -97,18 +98,22 @@ class RawSensorsView:
             else:
                 obstacles = transform_points(obstacles[:, :2], rotation)
                 obstacles += np.array(position)[:2].astype(int)
+
+            # self.__local_map[obstacles[:, 0], obstacles[:, 1]] = 0
+            
             obstacles[:, 0] = start[0] - obstacles[:, 0]
             obstacles[:, 1] = start[1] + obstacles[:, 1]
-            # noise in the odometry can break coordinates
+            #noise in the odometry can break coordinates
             obstacles = np.clip(obstacles, [0, 0],
                                 [self.__h - 1, self.__w - 1])
             self.__map[obstacles[:, 0], obstacles[:, 1]] = 0
-            self.__local_map[obstacles[:, 0], obstacles[:, 1]] = 0
-
+            
+            self.__y = np.concatenate((self.y, obstacles[:, 0]), axis=None)
+            self.__x = np.concatenate((self.x, obstacles[:, 1]), axis=None)
+            
     @property
     def distance_from_obstacles(self):
         return self.__distance_from_obstacles
-
 
     @property
     def drone_height(self):
@@ -141,6 +146,14 @@ class RawSensorsView:
     @property
     def local_map(self):
         return self.__local_map
+
+    @property
+    def x(self):
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
 
     def draw(self, screen, offset):
         transposed_map = np.transpose(self.__map)

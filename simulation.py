@@ -59,8 +59,8 @@ def main():
     controller = DroneController(robot, sensors_view, delta_t=delta_t)
     algo = Algorithms(controller, odometry)
 
-    clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    # clock = Clock(maximum_time_to_live = 1*60.0, current_time_to_live = 1*60.0)
+    #clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
+    clock = Clock(maximum_time_to_live = 0.5*60.0, current_time_to_live = 0.5*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([2*world.width, world.height])
@@ -94,7 +94,7 @@ def main():
             sensors_view.take_measurements_gyro(odometry)
 
             algo.sample_data()
-            algo.step(sensors_view.local_map)
+            algo.step(sensors_view.local_map,sensors_view.x,sensors_view.y)
             controller.move()
             
             time.sleep(0.1)
