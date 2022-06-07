@@ -63,7 +63,7 @@ def main():
     clock = Clock(maximum_time_to_live = 0.5*60.0, current_time_to_live = 0.5*60.0)
     
     # Initialize rendering
-    screen = pygame.display.set_mode([2*world.width, world.height])
+    screen = pygame.display.set_mode([world.width, world.height])
     font = pygame.font.Font(pygame.font.get_default_font(), 18)
 
     # Robot movement configuration
@@ -94,7 +94,7 @@ def main():
             sensors_view.take_measurements_gyro(odometry)
 
             algo.sample_data()
-            algo.step(sensors_view.local_map,sensors_view.x,sensors_view.y)
+            algo.step(sensors_view.x,sensors_view.y)
             controller.move()
             
             time.sleep(0.1)
@@ -124,11 +124,10 @@ def main():
                     if event.key == pygame.K_DOWN:
                         robot.move(-moving_step, 0)
 
+            sensors_view.draw(screen, offset=0)
             world.draw(screen, sensors_view.map)
             robot.draw(screen, world.height, world.width,world.drone_t)
-            
             algo.draw(screen, world.height, world.width,world.drone_t)
-            sensors_view.draw(screen, offset=world.width)
 
             data_sensors = controller.sensors_data()
             if data_sensors == None :

@@ -14,7 +14,6 @@ np.random.seed(42)
 np.seterr("ignore")
 
 def bfs(grid, start, goal, width, height):
-    print(start)
     queue = collections.deque([[(start[0],start[1])]])
     seen = set([(start[0],start[1])])
     while queue:
@@ -183,6 +182,10 @@ class Algorithms:
         #self.__pf = ParticleFilter(N=50, x_dim=460, y_dim=819)
         self.home = None
 
+        self.min_x, self.min_y, self.max_x, self.max_y = np.inf, np.inf, np.NINF, np.NINF
+        self.local_map = None
+        self.home_coords = None
+
     @property
     def state(self):
         return self.__state
@@ -289,7 +292,7 @@ class Algorithms:
     #         else :
     #             self.__done180 = True
 
-    def step(self, local_map, x, y):
+    def step(self, x, y):
         if self.__first_step:
             self.__controller.takeoff()
 
@@ -326,6 +329,46 @@ class Algorithms:
                 # self.rotate180()
                 self.RotateCW_90()
                 self.RotateCW_90()
+
+                self.min_x = int(min(self.__local_pos[1], np.min(x), 0))
+                self.min_y = int(min(self.__local_pos[0], np.min(y), 0))
+                self.max_x = int(max(self.__local_pos[1], np.max(x), 0))
+                self.max_y = int(max(self.__local_pos[0], np.max(y), 0))
+
+                # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+
+                #home = np.array([0 + np.min(y), 0 + np.min(x)])
+
+                # print("min x: ", self.min_x, "max x: ", self.max_x)
+                # print("min y: ", self.min_y, "max y: ", self.max_y)
+                # print("pos: 1: ", self.__local_pos)
+
+                self.home_coords = np.array([( (0 - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                                ( (0 - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
+                
+                y = ( (y - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0
+                x = ( (x - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0
+                
+                y = y.astype(int)
+                x = x.astype(int)
+            
+                self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
+                self.local_map[y,x] = 1
+                self.local_map[:,0] = 1
+                self.local_map[0,:] = 1
+
+                # pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                #                 ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
+
+                # print("home 2: ", self.home_coords)
+                # print("pos: 2: ", pos)
+                
+                # plt.imshow(self.local_map)
+                # plt.plot(self.home_coords[1], self.home_coords[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
+                # plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
+
+                # plt.show()
+
                 self.__done180 = True
             else:
                 self.__second_go_home = False
@@ -333,7 +376,7 @@ class Algorithms:
         elif self.__data["battery"] > 0 and not self.__arrive_home:
             # layout = self.__g.layout("kk")
             # ig.plot(self.__g, layout=layout)
-            self.GoHome(epsilon, local_map,x,y)
+            self.GoHome(epsilon)
 
         elif self.__data["battery"] <= 0:
             print("Timeout!")
@@ -410,47 +453,18 @@ class Algorithms:
         self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
         self.__delta_c_t += self.__delta_t 
 
-    def GoHome(self, epsilon, local_map, x, y):
+    def GoHome(self, epsilon):
 
-        min_x = int(min(self.__local_pos[1], np.min(x), 0))
-        min_y = int(min(self.__local_pos[0], np.min(y), 0))
-        max_x = int(max(self.__local_pos[1], np.max(x), 0))
-        max_y = int(max(self.__local_pos[0], np.max(y), 0))
-
-        # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
-
-        #home = np.array([0 + np.min(y), 0 + np.min(x)])
-        home = np.array([( (0 - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0 ,
-                        ( (0 - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0])
+        pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                                ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
         
-        pos = np.array([( (self.__local_pos[0] - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0 ,
-                        ( (self.__local_pos[1] - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0])
+        print("home: ", self.home_coords)
+        print("pos: ", pos)
 
-        y = ( (y - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0
-        x = ( (x - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0
-        
-        y = y.astype(int)
-        x = x.astype(int)
-       
-        local_map = np.zeros(shape=(np.max(y) + np.min(y) + 1, np.max(x) + np.min(x) + 1))
-        local_map[y,x] = 1
-        local_map[:,0] = 1
-        local_map[0,:] = 1
-
-        print("local: ",self.__local_pos)
-        
-        print("pos: ",pos)
-        
-        plt.imshow(local_map)
-        plt.plot(home[1], home[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
-        plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
-
-        plt.show()
-        
-        path = bfs(local_map, pos, home, local_map.shape[0],local_map.shape[1])
+        path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[0], self.local_map.shape[1])
         print(path)
-        # for i in path :
-        #     self.draw_intersections.append(i)
+        for i in path :
+            self.draw_intersections.append(i)
 
         norm_current = self.__current.copy()
         norm_current[norm_current == np.inf] = 3.0
