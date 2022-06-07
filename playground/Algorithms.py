@@ -10,20 +10,24 @@ import pygame
 from playground.utils.transform import to_screen_coords
 import collections
 import matplotlib.pyplot as plt
+from scipy import ndimage, misc
 np.random.seed(42)
 np.seterr("ignore")
 
 def bfs(grid, start, goal, width, height):
-    queue = collections.deque([[(start[0],start[1])]])
-    seen = set([(start[0],start[1])])
+    print("start",start)
+    print("goal",goal)
+    print("height:",height)
+    print("width:",width)
+    queue = collections.deque([[(int(start[1]),int(start[0]))]])
+    seen = set([(int(start[1]),int(start[0]))])
     while queue:
         path = queue.popleft()
         x, y = path[-1]
-        x, y = int(x), int(y)
-        if goal[0]==x and goal[1]==y:
+        if int(goal[1]) == x and int(goal[0]) == y:
             return path
-        for x2, y2 in ((x+1,y), (x-1,y), (x,y+1), (x,y-1),(x-1,y-1),(x+1,y+1),(x+1,y-1),(x-1,y+1)):
-            if 0 <= x2 < width and 0 <= y2 < height and int(grid[y2][x2]) != 0 and (x2, y2) not in seen:
+        for x2, y2 in ((x+1,y), (x-1,y), (x,y+1), (x,y-1),(x-1,y-1), (x+1,y+1), (x+1,y-1), (x-1,y+1)):
+            if 0 <= x2 < width and 0 <= y2 < height and grid[y2][x2] != 1 and (x2, y2) not in seen:
                 queue.append(path + [(x2, y2)])
                 seen.add((x2, y2))
  
@@ -37,6 +41,16 @@ def cosine_similarity(v1,v2):
         sumxy += x*y
     return sumxy/math.sqrt(sumxx*sumyy)
 
+def closet_point_on_path(pos, path):
+    min_point = path[0]
+    min_d = np.sqrt((pos[0] - min_point[0])**2 + (pos[1] - min_point[1])**2)
+    for point in path:
+        d = np.sqrt((pos[0] - point[0])**2 + (pos[1] - point[1])**2)
+        if d < min_d:
+            min_d = d
+            min_point = point
+    return min_point
+    
 def rmse(a, b):
     MSE = np.square(np.subtract(a,b)).mean() 
     RMSE = np.sqrt(MSE)
@@ -354,8 +368,8 @@ class Algorithms:
             
                 self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
                 self.local_map[y,x] = 1
-                self.local_map[:,0] = 1
-                self.local_map[0,:] = 1
+                # self.local_map[:,0] = 1
+                # self.local_map[0,:] = 1
 
                 # pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
                 #                 ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
@@ -454,28 +468,20 @@ class Algorithms:
         self.__delta_c_t += self.__delta_t 
 
     def GoHome(self, epsilon):
-
         pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
                                 ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-        
-        print("home: ", self.home_coords)
-        print("pos: ", pos)
+                                
+        self.local_map = ndimage.maximum_filter(self.local_map, size=3)
+        path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
+        # plt.imshow(self.local_map)
+        # plt.plot(self.home_coords[1], self.home_coords[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
+        # plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
+        # for i in path:
+        #     plt.plot(i[0], i[1], marker="o", markersize=5, markeredgecolor="yellow", markerfacecolor="yellow")
+        # plt.show()
+        closest = path[np.argmin([np.sqrt(sum((p - pos)**2)) for p in path])]
 
-        path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[0], self.local_map.shape[1])
-        print(path)
-        for i in path :
-            self.draw_intersections.append(i)
 
-        norm_current = self.__current.copy()
-        norm_current[norm_current == np.inf] = 3.0
-        norm_current = norm(norm_current)
-        error = rmse(norm_current, self.home)
-        
-        # print("min(rmses): ", error)
-
-        if np.min(error) < 0.1:
-                self.__arrive_home = True
-                
         if self.__current[0] < self.emengercy_tresh:
             self.Emengercy()
         elif self.__current[0] < self.front_tresh:
@@ -488,36 +494,6 @@ class Algorithms:
             self.RotateCCW_90()
         else:
             self.Fly_Forward(wall_align='d_left')
-
-        if is_intersection(self.__current[1], self.__current[3]):
-            time = self.__delta_c_t
-            mean = np.mean(self.__wall_distance)
-            std = np.std(self.__wall_distance)
-            dir = self.__cum_gyro
-            # sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
-            if self.__delta_c_t > 1:
-                # if len(sim_edge) != 0 :
-                #     # Add to graph:
-                #     self.__inter_vs.append(norm_current)
-                #     vs_mean =  np.mean(self.__inter_vs)
-                #     self.__inter_vs = []
-                #     sim_vs = [rmse(e.source,vs_mean) for e in sim_edge]
-                #     edge = sim_edge[np.argmin(sim_vs)]
-                #     # if edge["cum_gyro"] >= 90:
-                #     #     self.RotateCCW_90()
-                #     # elif edge["cum_gyro"] <= -90:
-                #     #     self.RotateCW_90()
-                #     self.draw_intersections_home.append(self.__controller.position)
-                pass
-            else:
-                self.__inter_vs.append((norm_current))
-                
-            self.__wall_distance = []
-            self.__cum_gyro = 0
-            self.__delta_c_t = 0
-
-        self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
-        self.__delta_c_t += self.__delta_t
         
             
 
