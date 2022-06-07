@@ -412,22 +412,22 @@ class Algorithms:
 
     def GoHome(self, epsilon, local_map, x, y):
 
-        # min_x = int(min(self.__min_local_pos_x, np.min(x)))
-        # min_y = int(min(self.__min_local_pos_y, np.min(y)))
-        # max_x = int(max(self.__max_local_pos_x, np.max(x)))
-        # max_y = int(max(self.__max_local_pos_y, np.max(y)))
+        min_x = int(min(self.__local_pos[1], np.min(x), 0))
+        min_y = int(min(self.__local_pos[0], np.min(y), 0))
+        max_x = int(max(self.__local_pos[1], np.max(x), 0))
+        max_y = int(max(self.__local_pos[0], np.max(y), 0))
 
         # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
 
-        home = np.array([0 + np.min(y), 0 + np.min(x)])
-        home = np.array([( (home[0] - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0 ,
-                        ( (home[1] - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0])
+        #home = np.array([0 + np.min(y), 0 + np.min(x)])
+        home = np.array([( (0 - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0 ,
+                        ( (0 - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0])
         
-        pos = np.array([( (self.__local_pos[0] - self.__min_local_pos_y) / (self.__max_local_pos_y - self.__min_local_pos_y) ) * (np.max(y) + np.min(y) - 0) + 0 ,
-                        ( (self.__local_pos[1] - self.__min_local_pos_x) / (self.__max_local_pos_x - self.__min_local_pos_x) ) * (np.max(x) + np.min(x) - 0) + 0])
+        pos = np.array([( (self.__local_pos[0] - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0 ,
+                        ( (self.__local_pos[1] - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0])
 
-        y = ( (y - np.min(y)) / (np.max(y) - np.min(y)) ) * (np.max(y) + np.min(y) - 0) + 0
-        x = ( (x - np.min(x)) / (np.max(x) - np.min(x)) ) * (np.max(x) + np.min(x) - 0) + 0
+        y = ( (y - min_y) / (max_y - min_y) ) * (max_y + min_y - 0) + 0
+        x = ( (x - min_x) / (max_x - min_x) ) * (max_x + min_x - 0) + 0
         
         y = y.astype(int)
         x = x.astype(int)
