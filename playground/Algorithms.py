@@ -1,24 +1,60 @@
 import random
-from threading import local
-
-# https://igraph.org/python/tutorial/latest/tutorial.html
-# import igraph as ig
+import time
 
 import numpy as np
 import math
 import pygame
-from playground.utils.transform import to_screen_coords
+from playground.utils.transform import to_screen_coords, make_direction
 import collections
 import matplotlib.pyplot as plt
-from scipy import ndimage, misc
+from scipy import ndimage, interpolate
 np.random.seed(42)
 np.seterr("ignore")
+from copy import deepcopy
+
+from playground.pure_pursuit import *
+
+
+# def smooth(path, weight_data=0.5, weight_smooth= 0.1, tolerance=0.000001):
+#     """
+#     source: https://medium.com/@jaems33/understanding-robot-motion-path-smoothing-5970c8363bc4
+#     Creates a smooth path for a n-dimensional series of coordinates.
+#     Arguments:
+#         path: List containing coordinates of a path
+#         weight_data: Float, how much weight to update the data (alpha)
+#         weight_smooth: Float, how much weight to smooth the coordinates (beta).
+#         tolerance: Float, how much change per iteration is necessary to keep iterating.
+#     Output:
+#         new: List containing smoothed coordinates.
+#     """
+
+#     new = deepcopy(path)
+#     dims = len(path[0])
+#     change = tolerance
+
+#     while change >= tolerance:
+#         change = 0.0
+#         for i in range(1, len(new) - 1):
+#             for j in range(dims):
+
+#                 x_i = path[i][j]
+#                 y_i, y_prev, y_next = new[i][j], new[i - 1][j], new[i + 1][j]
+
+#                 y_i_saved = y_i
+#                 y_i += weight_data * (x_i - y_i) + weight_smooth * (y_next + y_prev - (2 * y_i))
+#                 new[i][j] = y_i
+
+#                 change += abs(y_i - y_i_saved)
+
+#     return new
+
+def smooth(x,y):
+    tck, *rest = interpolate.splprep([x,y], s=len(x)+np.sqrt(2*len(x)))
+    u = np.linspace(0,1, num=len(x))
+    xint, yint = interpolate.splev(u, tck)
+    return xint, yint
 
 def bfs(grid, start, goal, width, height):
-    print("start",start)
-    print("goal",goal)
-    print("height:",height)
-    print("width:",width)
     queue = collections.deque([[(int(start[1]),int(start[0]))]])
     seen = set([(int(start[1]),int(start[0]))])
     while queue:
@@ -30,26 +66,6 @@ def bfs(grid, start, goal, width, height):
             if 0 <= x2 < width and 0 <= y2 < height and grid[y2][x2] != 1 and (x2, y2) not in seen:
                 queue.append(path + [(x2, y2)])
                 seen.add((x2, y2))
- 
-def cosine_similarity(v1,v2):
-    "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
-    sumxx, sumxy, sumyy = 0, 0, 0
-    for i in range(len(v1)):
-        x = v1[i]; y = v2[i]
-        sumxx += x*x
-        sumyy += y*y
-        sumxy += x*y
-    return sumxy/math.sqrt(sumxx*sumyy)
-
-def closet_point_on_path(pos, path):
-    min_point = path[0]
-    min_d = np.sqrt((pos[0] - min_point[0])**2 + (pos[1] - min_point[1])**2)
-    for point in path:
-        d = np.sqrt((pos[0] - point[0])**2 + (pos[1] - point[1])**2)
-        if d < min_d:
-            min_d = d
-            min_point = point
-    return min_point
     
 def rmse(a, b):
     MSE = np.square(np.subtract(a,b)).mean() 
@@ -61,30 +77,6 @@ def norm(a):
     if norm == np.nan :
         norm = 0.001
     return a/norm
-
-def start_intersection(dis, dis_prev, delta_t=0.1):
-    threshold = 15
-    dis[dis == np.inf] = 3.0
-    dis_prev[dis_prev == np.inf] = 3.0
-    if (dis[1] - dis_prev[1])/delta_t > threshold or (dis[3] - dis_prev[3])/delta_t > threshold:
-        return True
-    
-    return False
-
-def done_intersection(dis, dis_prev, delta_t=0.1):
-    threshold = 15
-    dis[dis == np.inf] = 3.0
-    dis_prev[dis_prev == np.inf] = 3.0
-    if (dis_prev[1] - dis[1])/delta_t > threshold or (dis_prev[3] - dis[3])/delta_t > threshold:
-        return True
-    
-    return False
-
-def is_intersection(left, right):
-    threshold = 2.3
-    if left > threshold or right > threshold:
-        return True
-    return False
 
 def clip(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -130,6 +122,11 @@ class PID():
     def set_disired_distance(self, d):
         self.__disired_distance = d
 
+    def set_params(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+
     def reset(self):
         self.__last_error = 0
         self.__integral = 0
@@ -153,6 +150,7 @@ class Algorithms:
         self.__first_step = True
         self.__first_go_home = True
         self.__second_go_home = True
+        self.__third_go_home = True
         self.__arrive_home = False
         
         # time constant
@@ -162,20 +160,14 @@ class Algorithms:
         self.__current = None
         self.__prev = None
 
-        #PIDs
+        #PIDs exploration
         self.PID_p = PID(1.5,0.004,0.4, disired_distance=0.1)
         self.PID_r = PID(6.0,6.0,1.0)
 
-        # keeps track of itersactions passed
-        self.draw_intersections = []
-        self.draw_intersections_home = []
-
-        self.__inter_vs = []
-        
-        self.__wall_distance = []
-        self.__cum_gyro = 0
-        self.__delta_c_t = 0
-        self.counter_loop = 0
+        # PIDs way back
+        self.PID_y = PID(0.5,0.0,0.05, max_measurements=180, disired_distance=0)
+        self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=0)
+        self.PID_rh = PID(1.5,1.5,0.25, disired_distance=0.2)
 
         # BAT tresholds
         self.emengercy_tresh = 0.3
@@ -184,34 +176,30 @@ class Algorithms:
         self.right_far_tresh = 2.5
         self.left_far_tresh = 2.5
 
-        #rotate180
-        self.__rmses = []
-        self.__rotate_back = 0
-        self.__number_of_rotations = 0
-        self.__done180 = False
-
-        # self.__g = ig.Graph()
-        self.__vertices_counter = 0
-
-        #self.__pf = ParticleFilter(N=50, x_dim=460, y_dim=819)
-        self.home = None
-
+        # local map, bfs
         self.min_x, self.min_y, self.max_x, self.max_y = np.inf, np.inf, np.NINF, np.NINF
         self.local_map = None
+        self.traj = np.empty(0)
+        self.goal = None
+
+        self.target_point = [0,0]
+        self.path_draw = []
         self.home_coords = None
+        
 
     @property
     def state(self):
         return self.__state
 
-    def draw(self, screen, h, w,start):
-        for p in self.draw_intersections : #intersection while exploration
-            position = to_screen_coords(h, w, p,start)
-            pygame.draw.circle(screen, color=(0, 255, 0), center=position, radius=10)
-        
-        for p in self.draw_intersections_home : #intersction on the way back
-            position = to_screen_coords(h, w, p,start)
-            pygame.draw.circle(screen, color=(0, 0, 255), center=position, radius=10)
+    def draw(self, screen, h, w, start):
+        for p in self.path_draw :
+            position = to_screen_coords(h, w, p, start)
+            pygame.draw.circle(screen, color=(165, 42, 42), center=position, radius=2)
+
+        target = (( (self.target_point[1] - 0) / (abs(self.max_y) + abs(self.min_y) - 0) ) * (self.max_y - self.min_y) + self.min_y, 
+                                        ( (self.target_point[0] - 0) / (abs(self.max_x) + abs(self.min_x) - 0) ) * (self.max_x - self.min_x) + self.min_x)
+        position = to_screen_coords(h, w, target, start)
+        pygame.draw.circle(screen, color=(255, 0, 255), center=position, radius=3)
 
     def sample_data(self):
         self.__data = self.__controller.sensors_data()
@@ -221,16 +209,10 @@ class Algorithms:
         self.__min_local_pos_y = min(self.__min_local_pos_y, self.__local_pos[0])
         self.__max_local_pos_x = max(self.__max_local_pos_x, self.__local_pos[1])
         self.__max_local_pos_y = max(self.__max_local_pos_y, self.__local_pos[0])
-        self.__rotation = self.__odometry.rotation
+        y,x = make_direction(self.__odometry.rotation)
+        self.__rotation = np.degrees(math.atan2(y,x))
         if self.__first_step:
             self.__prev = self.__current.copy()
-
-    # retuns the mathcing the given intersection
-    def match_intersection(self,current):
-        inters_dist = [rmse(current, v[0]) for v in self.intersections]
-        if len(inters_dist) > 0:
-            return np.argmin(inters_dist)
-        return None
 
     def random_walk(self):
         self.__controller.takeoff()
@@ -253,7 +235,6 @@ class Algorithms:
         u_t_p_t = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p_t)        
 
-        # self.PID_r.set_disired_distance(abs(right - left)/2)
         u_t_r_t = self.PID_r.compute(self.__data[wall_align])
         self.__controller.roll(u_t_r_t)
 
@@ -264,66 +245,39 @@ class Algorithms:
         sign = 1
         if wall_align == 'd_left':
             sign = -1
-        # self.PID_r.set_disired_distance(0.5)
+
         u_t_r = sign * self.PID_r.compute(self.__data[wall_align])        
         self.__controller.roll(u_t_r)
         
     def RotateCCW(self):
         self.__state = 'Rotate CCW'
         self.__controller.yaw(10)
-        self.__cum_gyro += 10
     
     def RotateCW(self):
         self.__state = 'Rotate CW'
         self.__controller.yaw(-10)
-        self.__cum_gyro -= 10
 
     def RotateCW_90(self):
         self.__state = 'Rotate 90CW'
         self.__controller.yaw(-90)
-        self.__cum_gyro -= 90
+
+    def RotateCW_180(self):
+        self.__state = 'Rotate 180CW'
+        self.__controller.yaw(-180)
     
     def RotateCCW_90(self):
         self.__state = 'Rotate 90CCW'
         self.__controller.yaw(90)
-        self.__cum_gyro += 90
-
-    # def rotate180(self):
-    #     self.__state = 'Rotate 180'
-    #     if self.__number_of_rotations < 36:
-    #         self.RotateCCW()
-    #         rotate_current = self.__current.copy()[::-1]
-    #         rotate_current[rotate_current == np.inf] = 3.0
-    #         rotate_current = norm(rotate_current)
-    #         self.__rmses.append(rmse(self.__current, rotate_current))
-    #         self.__number_of_rotations += 1
-    #     else:
-    #         min_index_deg = self.__rmses.index(min(self.__rmses))
-            
-    #         if self.__rotate_back < min_index_deg:
-    #             self.RotateCCW()
-    #             self.__rotate_back += 1
-    #         else :
-    #             self.__done180 = True
 
     def step(self, x, y):
         if self.__first_step:
             self.__controller.takeoff()
-
-            self.home = self.__current.copy()
-            self.home[self.home == np.inf] = 3.0
             self.__first_step = False
-            
-            # add home to graph
-            # self.__g.add_vertex()
-            # self.__g.vs[self.__vertices_counter]["distances"] = norm(home)
-
-            self.__vertices_counter = self.__vertices_counter + 1
 
         epsilon = 0.3
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
-        if self.__data["battery"] > 55:
+        if self.__data["battery"] > 60:
             self.BAT(epsilon)
 
         elif self.__first_go_home:
@@ -337,84 +291,83 @@ class Algorithms:
             opt = [self.__data["v_x"], self.__data["v_y"]]
             if min(opt) > 0:
                 return
-
+            
             # rotate 180 degrees
-            if not self.__done180 :
-                # self.rotate180()
-                self.RotateCW_90()
-                self.RotateCW_90()
+            # self.RotateCW_180()
+            self.__second_go_home = False
 
-                self.min_x = int(min(self.__local_pos[1], np.min(x), 0))
-                self.min_y = int(min(self.__local_pos[0], np.min(y), 0))
-                self.max_x = int(max(self.__local_pos[1], np.max(x), 0))
-                self.max_y = int(max(self.__local_pos[0], np.max(y), 0))
-
-                # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
-
-                #home = np.array([0 + np.min(y), 0 + np.min(x)])
-
-                # print("min x: ", self.min_x, "max x: ", self.max_x)
-                # print("min y: ", self.min_y, "max y: ", self.max_y)
-                # print("pos: 1: ", self.__local_pos)
-
-                self.home_coords = np.array([( (0 - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
-                                ( (0 - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-                
-                y = ( (y - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0
-                x = ( (x - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0
-                
-                y = y.astype(int)
-                x = x.astype(int)
+        elif self.__third_go_home:
+            if self.__data["yaw"] < 0.0 :
+                return
             
-                self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
-                self.local_map[y,x] = 1
-                # self.local_map[:,0] = 1
-                # self.local_map[0,:] = 1
+            self.min_x = int(min(self.__local_pos[1], np.min(x), 0))
+            self.min_y = int(min(self.__local_pos[0], np.min(y), 0))
+            self.max_x = int(max(self.__local_pos[1], np.max(x), 0))
+            self.max_y = int(max(self.__local_pos[0], np.max(y), 0))
 
-                # pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
-                #                 ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-
-                # print("home 2: ", self.home_coords)
-                # print("pos: 2: ", pos)
-                
-                # plt.imshow(self.local_map)
-                # plt.plot(self.home_coords[1], self.home_coords[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
-                # plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
-
-                # plt.show()
-
-                self.__done180 = True
-            else:
-                self.__second_go_home = False
+            # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+            self.home_coords = np.array([( (0 - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                            ( (0 - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
             
-        elif self.__data["battery"] > 0 and not self.__arrive_home:
-            # layout = self.__g.layout("kk")
-            # ig.plot(self.__g, layout=layout)
+            y = ( (y - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0
+            x = ( (x - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0
+            
+            y = y.astype(int)
+            x = x.astype(int)
+        
+            self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
+            self.local_map[y,x] = 1
+            
+            pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                            ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
+                            
+            self.local_map = ndimage.maximum_filter(self.local_map, size=3)
+            path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
+                                   
+            traj_x = []
+            traj_y = []
+            for pos in path:
+                traj_x.append(pos[0])
+                traj_y.append(pos[1])
+            
+            traj_x,traj_y = smooth(traj_x, traj_y)
+            traj_x = np.array(traj_x).astype(np.int)
+            traj_y = np.array(traj_y).astype(np.int)
+
+            self.traj = Trajectory(traj_x, traj_y)
+            self.goal = self.traj.getPoint(len(traj_x) - 1)
+
+            for x,y in zip(traj_x,traj_y):
+                self.path_draw.append((( (y - 0) / (abs(self.max_y) + abs(self.min_y) - 0) ) * (self.max_y - self.min_y) + self.min_y, 
+                                        ( (x - 0) / (abs(self.max_x) + abs(self.min_x) - 0) ) * (self.max_x - self.min_x) + self.min_x))
+
+            self.__third_go_home = False
+            
+        # elif self.__data["battery"] > 0 and not self.__arrive_home:
+        elif not self.__arrive_home:
             self.GoHome(epsilon)
 
-        elif self.__data["battery"] <= 0:
-            print("Timeout!")
-            self.__controller.pitch(0)
-            self.__controller.roll(0)
-            self.__controller.land()
+        # elif self.__data["battery"] <= 0:
+        #     print("Timeout!")
+        #     self.__controller.pitch(0)
+        #     self.__controller.roll(0)
+        #     self.__controller.land()
 
-        else:
-            print("Drone returned home")
-            self.__controller.pitch(0)
-            self.__controller.roll(0)
-            self.__controller.land()
+        # else:
+        #     print("Drone returned home")
+        #     self.__controller.pitch(0)
+        #     self.__controller.roll(0)
+        #     self.__controller.land()
         
         self.__prev = self.__current.copy()
 
 
     def BAT(self, epsilon):
-        # print("rotation: ", self.__rotation)
-
-        if self.__current[0] < self.emengercy_tresh: #or (self.__data['v_x'] == 0 and self.__data['v_y'] == 0 and self.__data['pitch'] != 0):
+        if self.__current[0] < self.emengercy_tresh:
             self.Emengercy()
         elif self.__current[0] < self.front_tresh:
             self.RotateCCW()
-        elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon: #and self.__current[0] < self.front_tresh*2.5:
+        elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
             self.RotateCW()
         elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
             self.Tunnel(self.__current[1], self.__current[3])
@@ -422,78 +375,49 @@ class Algorithms:
             self.RotateCW_90()
         else:
             self.Fly_Forward()
-        
-        if is_intersection(self.__current[1], self.__current[3]):
-            norm_current = self.__current.copy()
-            norm_current[norm_current == np.inf] = 3.0
-            norm_current = norm(norm_current)
-
-            time = self.__delta_c_t
-            mean = np.mean(self.__wall_distance)
-            std = np.std(self.__wall_distance)
-            dir = self.__cum_gyro
-            # sim_edge = self.__g.es.select(lambda edge : rmse(np.array([edge['time'],edge['mean_dis'],edge['std_dis'],edge['cum_gyro']]), np.array([time,mean,std,dir])) < 0.02)
-            if self.__delta_c_t > 1.5:
-                # if len(sim_edge) == 0 :
-                #     # Add to graph:
-                #     self.__g.add_vertex()
-                #     self.__inter_vs.append(norm_current)
-                #     self.__g.vs[self.__vertices_counter]["distance"] = np.mean(self.__inter_vs)
-                #     self.__inter_vs = []
-                #     self.__g.add_edge(self.__vertices_counter - 1, self.__vertices_counter)
-                #     self.__g.es[self.__vertices_counter -1]["time"] = time
-                #     self.__g.es[self.__vertices_counter -1]["mean_dis"] = mean
-                #     self.__g.es[self.__vertices_counter -1]["std_dis"] = std
-                #     self.__g.es[self.__vertices_counter -1]["cum_gyro"] = dir
-                #     print("dir",dir)
-                #     if self.counter_loop > 0:
-                #         self.__g.add_edge(self.__vertices_counter - self.counter_loop, self.__vertices_counter)
-                #         self.counter_loop = 0
-                        
-                #     self.__vertices_counter = self.__vertices_counter + 1
-                #     # layout = self.__g.layout("kk")
-                #     # ig.plot(self.__g, layout=layout)
-                #     self.draw_intersections.append(self.__controller.position)
-                #     self.__wall_distance = []
-                #     self.__cum_gyro = 0
-                #     self.__delta_c_t = 0
-                # else:
-                #     self.__g.delete_edges(sim_edge[0])
-                #     self.counter_loop +=1
-                pass
-            else:
-                self.__inter_vs.append((norm_current))
-
-        self.__wall_distance.append(np.clip(abs(self.__current[3]-self.__current[1]), 0.0, 3.0))
-        self.__delta_c_t += self.__delta_t 
 
     def GoHome(self, epsilon):
-        pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
-                                ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-                                
-        self.local_map = ndimage.maximum_filter(self.local_map, size=3)
-        path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
-        # plt.imshow(self.local_map)
-        # plt.plot(self.home_coords[1], self.home_coords[0], marker="o", markersize=10, markeredgecolor="red", markerfacecolor="red")
-        # plt.plot(pos[1], pos[0], marker="o", markersize=10, markeredgecolor="green", markerfacecolor="green")
-        # for i in path:
-        #     plt.plot(i[0], i[1], marker="o", markersize=5, markeredgecolor="yellow", markerfacecolor="yellow")
-        # plt.show()
-        closest = path[np.argmin([np.sqrt(sum((p - pos)**2)) for p in path])]
+        pos = np.array([ ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0 ,
+                            ((self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ])
+        
+        if getDistance([pos[0], pos[1]], self.goal) > 5:
+            if self.__current[0] < self.emengercy_tresh:
+                self.Emengercy()
+            elif self.__current[3] < epsilon:
+                u_t_r = self.PID_rh.compute(self.__data['d_right'])        
+                self.__controller.roll(u_t_r)
+            elif self.__current[1] < epsilon:
+                u_t_r = -1 * self.PID_rh.compute(self.__data['d_left'])        
+                self.__controller.roll(u_t_r)
+            
+            self.target_point = self.traj.getTargetPoint([pos[0], pos[1]])
+            yaw_err =  np.degrees(math.atan2(self.target_point[1] - pos[1], self.target_point[0] - pos[0])) - self.__rotation
+            new_yaw = self.PID_y.compute(yaw_err)
+            # sign = 1
+            # if pos[0] < self.target_point[0]:
+            #     sign = -1
+            self.__controller.yaw(new_yaw)
 
+            if abs(yaw_err) < 5:
+                self.PID_ph.set_params(0.15,0.0004,0.04)
+            elif abs(yaw_err) < 10:
+                self.PID_ph.set_params(0.015/5,0.00004/5,0.004/5)
+            else:
+                self.PID_ph.set_params(0.015,0.00004,0.004)
+            dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
+            new_pitch = self.PID_ph.compute(dis)
+            print('yaw_err: ', yaw_err)
+            print('pitch_error: ', dis)
+            print('new_pitch: ', new_pitch)
+            # print('new_yaw: ', sign * new_yaw)
+            print('_________________________')
+            self.__controller.pitch(new_pitch)
 
-        if self.__current[0] < self.emengercy_tresh:
-            self.Emengercy()
-        elif self.__current[0] < self.front_tresh:
-            self.RotateCW()
-        elif (self.__current[1] - self.__prev[1])/self.__delta_t > epsilon:
-            self.RotateCCW()
-        elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
-            self.Tunnel(self.__current[1], self.__current[3], wall_align='d_left')
-        elif self.__current[1] > self.left_far_tresh:
-            self.RotateCCW_90()
+            
         else:
-            self.Fly_Forward(wall_align='d_left')
+            print('enddddd!!!')
+
+        
         
             
 

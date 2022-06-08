@@ -114,7 +114,7 @@ class DroneController:
 
             "pitch": round(self.__pitch, 2),
             "roll": round(self.__roll, 2),
-            "yaw": self.__yaw,
+            "yaw": round(self.__yaw, 2),
 
             "acc_x": self.__acceleration_x,
             "acc_y": self.__acceleration_y,

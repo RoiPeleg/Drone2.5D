@@ -99,8 +99,8 @@ def main():
             
             time.sleep(0.1)
 
-            if clock.current_time_to_live <= 0:
-                break
+            # if clock.current_time_to_live <= 0:
+            #     break
 
     t_clock = threading.Thread(target=clock_fun, args=())
     
@@ -126,8 +126,8 @@ def main():
 
             sensors_view.draw(screen, offset=0)
             world.draw(screen, sensors_view.map)
-            robot.draw(screen, world.height, world.width,world.drone_t)
-            algo.draw(screen, world.height, world.width,world.drone_t)
+            algo.draw(screen, world.height, world.width, world.drone_t)
+            robot.draw(screen, world.height, world.width, world.drone_t)
 
             data_sensors = controller.sensors_data()
             if data_sensors == None :
