@@ -356,7 +356,6 @@ class Algorithms:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif self.__current[3] < epsilon:
-                print("right")
                 u_t_r = self.PID_rh.compute(self.__data['d_right'])        
                 self.__controller.roll(u_t_r)
             elif self.__current[1] < epsilon:
@@ -368,11 +367,7 @@ class Algorithms:
             new_yaw = self.PID_y.compute(yaw_err)
             self.__controller.yaw(new_yaw)
 
-            print('yaw_err: ', yaw_err)
-            print('new_yaw: ', new_yaw)
-            print('_________________________')
-
-            if(abs(new_yaw) < 30):
+            if(abs(new_yaw) < 60):
                 if abs(new_yaw) < 10:
                     self.PID_ph.set_params(0.3,0.0008,0.08)
                 elif abs(new_yaw) < 20:
@@ -382,12 +377,10 @@ class Algorithms:
 
                 dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
                 new_pitch = self.PID_ph.compute(dis)
-                
-                print('pitch_error: ', dis)
-                print('new_pitch: ', new_pitch)
-                print('_________________________')
                 self.__controller.pitch(new_pitch)
-
+            else:
+                self.__controller.pitch(0)
+                print(new_yaw)
         else:
             self.__arrive_home = True
 
