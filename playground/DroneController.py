@@ -34,6 +34,7 @@ class DroneController:
         self.__counter = 0
 
     def move(self):
+        
         sign = 0
         if self.__counter > 0:
             if self.__yaw < 0:

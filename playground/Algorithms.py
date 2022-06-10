@@ -15,40 +15,6 @@ from copy import deepcopy
 
 from playground.pure_pursuit import *
 
-
-# def smooth(path, weight_data=0.5, weight_smooth= 0.1, tolerance=0.000001):
-#     """
-#     source: https://medium.com/@jaems33/understanding-robot-motion-path-smoothing-5970c8363bc4
-#     Creates a smooth path for a n-dimensional series of coordinates.
-#     Arguments:
-#         path: List containing coordinates of a path
-#         weight_data: Float, how much weight to update the data (alpha)
-#         weight_smooth: Float, how much weight to smooth the coordinates (beta).
-#         tolerance: Float, how much change per iteration is necessary to keep iterating.
-#     Output:
-#         new: List containing smoothed coordinates.
-#     """
-
-#     new = deepcopy(path)
-#     dims = len(path[0])
-#     change = tolerance
-
-#     while change >= tolerance:
-#         change = 0.0
-#         for i in range(1, len(new) - 1):
-#             for j in range(dims):
-
-#                 x_i = path[i][j]
-#                 y_i, y_prev, y_next = new[i][j], new[i - 1][j], new[i + 1][j]
-
-#                 y_i_saved = y_i
-#                 y_i += weight_data * (x_i - y_i) + weight_smooth * (y_next + y_prev - (2 * y_i))
-#                 new[i][j] = y_i
-
-#                 change += abs(y_i - y_i_saved)
-
-#     return new
-
 def smooth(x,y):
     tck, *rest = interpolate.splprep([x,y], s=len(x)+np.sqrt(2*len(x)))
     u = np.linspace(0,1, num=len(x))
@@ -167,8 +133,8 @@ class Algorithms:
 
         # PIDs way back
         self.PID_y = PID(0.5,0.0,0.05, max_measurements=180, disired_distance=0)
-        self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=0)
-        self.PID_rh = PID(1.5,1.5,0.25, disired_distance=0.2)
+        self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=10)
+        self.PID_rh = PID(1.25,1.25,0.25, disired_distance=0.1)
 
         # BAT tresholds
         self.emengercy_tresh = 0.3
@@ -278,7 +244,7 @@ class Algorithms:
         epsilon = 0.3
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
-        if self.__data["battery"] > 60:
+        if self.__data["battery"] > 50:
             self.BAT(epsilon)
 
         elif self.__first_go_home:
@@ -286,6 +252,7 @@ class Algorithms:
             self.PID_r.reset()
             self.__controller.pitch(0)
             self.__controller.roll(0)
+            self.__controller.yaw(0)
             self.__first_go_home = False
             
         elif self.__second_go_home:
@@ -344,21 +311,25 @@ class Algorithms:
 
             self.__third_go_home = False
             
-        # elif self.__data["battery"] > 0 and not self.__arrive_home:
+        elif self.__data["battery"] <= 0:
+            print("Timeout!")
+            self.__controller.pitch(0)
+            self.__controller.roll(0)
+            self.__controller.yaw(0)
+            self.__controller.land()
+
+         # elif self.__data["battery"] > 0 and not self.__arrive_home:
         elif not self.__arrive_home:
             self.GoHome(epsilon)
-
-        # elif self.__data["battery"] <= 0:
-        #     print("Timeout!")
-        #     self.__controller.pitch(0)
-        #     self.__controller.roll(0)
-        #     self.__controller.land()
-
-        # else:
-        #     print("Drone returned home")
-        #     self.__controller.pitch(0)
-        #     self.__controller.roll(0)
-        #     self.__controller.land()
+        else:
+            print("Drone returned home")
+            self.__controller.pitch(0)
+            self.__controller.roll(0)
+            self.__controller.yaw(0)
+            opt = [self.__data["v_x"], self.__data["v_y"]]
+            if min(opt) > 0 and self.__data["yaw"] < 0.0:
+                return
+            self.__controller.land()
         
         self.__prev = self.__current.copy()
 
@@ -381,7 +352,7 @@ class Algorithms:
         pos = np.array([ ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0 ,
                             ((self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ])
         
-        if getDistance([pos[0], pos[1]], self.goal) > 5:
+        if getDistance([pos[0], pos[1]], self.goal) > L:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif self.__current[3] < epsilon:
@@ -401,15 +372,13 @@ class Algorithms:
             print('new_yaw: ', new_yaw)
             print('_________________________')
 
-            if(abs(new_yaw) < 40):
+            if(abs(new_yaw) < 30):
                 if abs(new_yaw) < 10:
                     self.PID_ph.set_params(0.3,0.0008,0.08)
                 elif abs(new_yaw) < 20:
                     self.PID_ph.set_params(0.03,0.00008,0.008)
-                elif abs(new_yaw) < 30:
-                    self.PID_ph.set_params(0.003,0.000008,0.0008)
                 else:
-                    self.PID_ph.set_params(0.0003,0.0000008,0.00008)
+                    self.PID_ph.set_params(0.003,0.000008,0.0008)
 
                 dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
                 new_pitch = self.PID_ph.compute(dis)
@@ -419,9 +388,8 @@ class Algorithms:
                 print('_________________________')
                 self.__controller.pitch(new_pitch)
 
-            
         else:
-            print('enddddd!!!')
+            self.__arrive_home = True
 
         
         
