@@ -4,6 +4,7 @@ import time
 import numpy as np
 import math
 import pygame
+from sqlalchemy import true
 from playground.utils.transform import to_screen_coords, make_direction
 import collections
 import matplotlib.pyplot as plt
@@ -317,11 +318,11 @@ class Algorithms:
         
             self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
             self.local_map[y,x] = 1
-            
+
             pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
                             ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
                             
-            self.local_map = ndimage.maximum_filter(self.local_map, size=3)
+            self.local_map = ndimage.maximum_filter(self.local_map, size=20)
             path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
                                    
             traj_x = []
@@ -384,6 +385,7 @@ class Algorithms:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif self.__current[3] < epsilon:
+                print("right")
                 u_t_r = self.PID_rh.compute(self.__data['d_right'])        
                 self.__controller.roll(u_t_r)
             elif self.__current[1] < epsilon:
@@ -393,25 +395,29 @@ class Algorithms:
             self.target_point = self.traj.getTargetPoint([pos[0], pos[1]])
             yaw_err =  np.degrees(math.atan2(self.target_point[1] - pos[1], self.target_point[0] - pos[0])) - self.__rotation
             new_yaw = self.PID_y.compute(yaw_err)
-            # sign = 1
-            # if pos[0] < self.target_point[0]:
-            #     sign = -1
             self.__controller.yaw(new_yaw)
 
-            if abs(yaw_err) < 5:
-                self.PID_ph.set_params(0.15,0.0004,0.04)
-            elif abs(yaw_err) < 10:
-                self.PID_ph.set_params(0.015/5,0.00004/5,0.004/5)
-            else:
-                self.PID_ph.set_params(0.015,0.00004,0.004)
-            dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
-            new_pitch = self.PID_ph.compute(dis)
             print('yaw_err: ', yaw_err)
-            print('pitch_error: ', dis)
-            print('new_pitch: ', new_pitch)
-            # print('new_yaw: ', sign * new_yaw)
+            print('new_yaw: ', new_yaw)
             print('_________________________')
-            self.__controller.pitch(new_pitch)
+
+            if(abs(new_yaw) < 40):
+                if abs(new_yaw) < 10:
+                    self.PID_ph.set_params(0.3,0.0008,0.08)
+                elif abs(new_yaw) < 20:
+                    self.PID_ph.set_params(0.03,0.00008,0.008)
+                elif abs(new_yaw) < 30:
+                    self.PID_ph.set_params(0.003,0.000008,0.0008)
+                else:
+                    self.PID_ph.set_params(0.0003,0.0000008,0.00008)
+
+                dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
+                new_pitch = self.PID_ph.compute(dis)
+                
+                print('pitch_error: ', dis)
+                print('new_pitch: ', new_pitch)
+                print('_________________________')
+                self.__controller.pitch(new_pitch)
 
             
         else:

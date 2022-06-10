@@ -60,7 +60,7 @@ def main():
     algo = Algorithms(controller, odometry)
 
     #clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    clock = Clock(maximum_time_to_live = 0.5*60.0, current_time_to_live = 0.5*60.0)
+    clock = Clock(maximum_time_to_live = 45.0, current_time_to_live = 45.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width, world.height])
