@@ -1,17 +1,13 @@
 import random
-import time
-
+import statistics
 import numpy as np
 import math
 import pygame
-from sqlalchemy import true
 from playground.utils.transform import to_screen_coords, make_direction
 import collections
-import matplotlib.pyplot as plt
 from scipy import ndimage, interpolate
 np.random.seed(42)
 np.seterr("ignore")
-from copy import deepcopy
 
 from playground.pure_pursuit import *
 
@@ -33,17 +29,56 @@ def bfs(grid, start, goal, width, height):
             if 0 <= x2 < width and 0 <= y2 < height and grid[y2][x2] != 1 and (x2, y2) not in seen:
                 queue.append(path + [(x2, y2)])
                 seen.add((x2, y2))
-    
-def rmse(a, b):
-    MSE = np.square(np.subtract(a,b)).mean() 
-    RMSE = np.sqrt(MSE)
-    return RMSE
 
-def norm(a):
-    norm = np.linalg.norm(a)
-    if norm == np.nan :
-        norm = 0.001
-    return a/norm
+def is_intersection(left, right):
+    threshold = 2.3
+    if left > threshold or right > threshold:
+        return True
+    return False
+
+def start_intersection(dis, dis_prev, delta_t=0.1):
+    threshold = 15
+    dis[dis == np.inf] = 3.0
+    dis_prev[dis_prev == np.inf] = 3.0
+    if (dis[1] - dis_prev[1])/delta_t > threshold or (dis[3] - dis_prev[3])/delta_t > threshold:
+        return True
+    
+    return False
+
+def done_intersection(dis, dis_prev, delta_t=0.1):
+    threshold = 15
+    dis[dis == np.inf] = 3.0
+    dis_prev[dis_prev == np.inf] = 3.0
+    if (dis_prev[1] - dis[1])/delta_t > threshold or (dis_prev[3] - dis[3])/delta_t > threshold:
+        return True
+    
+    return False
+
+def getDistance(p1, p2):
+    """
+    Calculate distance
+    :param p1: list, point1
+    :param p2: list, point2
+    :return: float, distance
+    """
+    dx = p1[0] - p2[0]
+    dy = p1[1] - p2[1]
+    return math.hypot(dx, dy)
+
+def closest_intersection(local_pos, intersections):
+    if intersections != None:
+        return None
+
+    closest = intersections[0]
+    closest_dis = getDistance(local_pos, intersections[0])
+
+    for inter in intersections:
+        d = getDistance(local_pos, inter)
+        if d < closest_dis:
+            closest = inter
+            closest_dis = d
+    
+    return closest, closest_dis
 
 def clip(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -152,6 +187,10 @@ class Algorithms:
         self.target_point = [0,0]
         self.path_draw = []
         self.home_coords = None
+        self.intersections = []
+        self.last_intersection = []
+        self.start_inter = False
+        self.cum_delta_t = 0
         
 
     @property
@@ -167,6 +206,10 @@ class Algorithms:
                                         ( (self.target_point[0] - 0) / (abs(self.max_x) + abs(self.min_x) - 0) ) * (self.max_x - self.min_x) + self.min_x)
         position = to_screen_coords(h, w, target, start)
         pygame.draw.circle(screen, color=(255, 0, 255), center=position, radius=3)
+
+        for p in self.intersections : #intersection while exploration
+            position = to_screen_coords(h, w, p[0],start)
+            pygame.draw.circle(screen, color=(0, 255, 0), center=position, radius=5)
 
     def sample_data(self):
         self.__data = self.__controller.sensors_data()
@@ -335,19 +378,80 @@ class Algorithms:
 
 
     def BAT(self, epsilon):
-        if self.__current[0] < self.emengercy_tresh:
-            self.Emengercy()
-        elif self.__current[0] < self.front_tresh:
-            self.RotateCCW()
-        elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
-            self.RotateCW()
-        elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
-            self.Tunnel(self.__current[1], self.__current[3])
-        elif self.__current[3] > self.right_far_tresh:
-            self.RotateCW_90()
-        else:
-            self.Fly_Forward()
 
+        self.__new_inter = True
+
+        if is_intersection(self.__current[1], self.__current[3]):
+            
+            threshold = 1
+            if self.cum_delta_t > threshold:
+                self.cum_delta_t = 0
+                # done_intersection
+                self.start_inter = False
+                closest = closest_intersection(self.__local_pos, self.intersections)
+                if closest != None:
+                    threshold = 120
+                    if closest[1] < threshold:
+                        print("im here")
+                        self.__new_inter = False
+                        if closest[0][1] > 0 and self.__current[1] > 2.3:
+                            self.RotateCW_90()
+                        elif closest[0][1] < 0 and self.__current[3] > 2.3:
+                            self.RotateCCW_90()
+                        else:
+                            self.Fly_Forward()
+                else:
+                    print(self.last_intersection)
+                    print(np.array([pair[0] for pair in self.last_intersection]))
+                    avg_pos = np.mean(np.array([pair[0] for pair in self.last_intersection]), axis=0)
+                    diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
+                    self.intersections.append((avg_pos,diff_rot))
+                    self.last_intersection = []
+            else:
+                # in intersection
+                self.last_intersection.append((self.__local_pos,self.__rotation))
+                self.start_inter = True
+                
+
+        # if start_intersection(self.__current,self.__prev):
+        #     self.last_intersection = (self.__local_pos, self.__rotation)
+        #     self.start_inter = True
+
+        # if done_intersection(self.__current, self.__prev) and self.start_inter:
+        #     self.start_inter = False
+
+        #     closest = closest_intersection(self.__local_pos, self.intersections)
+        #     if closest != None:
+        #         threshold = 120
+        #         if closest[1] < threshold:
+        #             print("im here")
+        #             self.__new_inter = False
+        #             if closest[0][1] > 0 and self.__current[1] > 2.3:
+        #                 self.RotateCW_90()
+        #             elif closest[0][1] < 0 and self.__current[3] > 2.3:
+        #                 self.RotateCCW_90()
+        #             else:
+        #                 self.Fly_Forward()
+        #     else:
+        #         cum_rotation = self.last_intersection[1] - self.__rotation
+        #         self.intersections.append(( (self.__local_pos + self.last_intersection[0])/2.0 ,cum_rotation))
+        
+        if self.__new_inter:
+            if self.__current[0] < self.emengercy_tresh:
+                self.Emengercy()
+            elif self.__current[0] < self.front_tresh:
+                self.RotateCCW()
+            elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
+                self.RotateCW()
+            elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
+                self.Tunnel(self.__current[1], self.__current[3])
+            elif self.__current[3] > self.right_far_tresh:
+                self.RotateCW_90()
+            else:
+                self.Fly_Forward()
+        
+        self.cum_delta_t += self.__delta_t
+            
     def GoHome(self, epsilon):
         pos = np.array([ ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0 ,
                             ((self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ])
@@ -380,7 +484,6 @@ class Algorithms:
                 self.__controller.pitch(new_pitch)
             else:
                 self.__controller.pitch(0)
-                print(new_yaw)
         else:
             self.__arrive_home = True
 
