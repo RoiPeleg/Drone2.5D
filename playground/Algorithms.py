@@ -382,7 +382,7 @@ class Algorithms:
         self.__new_inter = True
 
         if is_intersection(self.__current[1], self.__current[3]):
-            
+            self.cum_delta_t += self.__delta_t
             threshold = 1
             if self.cum_delta_t > threshold:
                 self.cum_delta_t = 0
@@ -401,8 +401,6 @@ class Algorithms:
                         else:
                             self.Fly_Forward()
                 else:
-                    print(self.last_intersection)
-                    print(np.array([pair[0] for pair in self.last_intersection]))
                     avg_pos = np.mean(np.array([pair[0] for pair in self.last_intersection]), axis=0)
                     diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
                     self.intersections.append((avg_pos,diff_rot))
@@ -411,8 +409,9 @@ class Algorithms:
                 # in intersection
                 self.last_intersection.append((self.__local_pos,self.__rotation))
                 self.start_inter = True
-                
-
+        else :
+            self.cum_delta_t = 0
+        print("delta_c",self.cum_delta_t)        
         # if start_intersection(self.__current,self.__prev):
         #     self.last_intersection = (self.__local_pos, self.__rotation)
         #     self.start_inter = True
@@ -450,7 +449,6 @@ class Algorithms:
             else:
                 self.Fly_Forward()
         
-        self.cum_delta_t += self.__delta_t
             
     def GoHome(self, epsilon):
         pos = np.array([ ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0 ,
