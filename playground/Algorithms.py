@@ -31,7 +31,7 @@ def bfs(grid, start, goal, width, height):
                 seen.add((x2, y2))
 
 def is_intersection(left, right):
-    threshold = 2.3
+    threshold = 2.2
     if left > threshold or right > threshold:
         return True
     return False
@@ -169,7 +169,7 @@ class Algorithms:
         # PIDs way back
         self.PID_y = PID(0.5,0.0,0.05, max_measurements=180, disired_distance=0)
         self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=10)
-        self.PID_rh = PID(1.25,1.25,0.25, disired_distance=0.1)
+        self.PID_rh = PID(1.5 ,1.5 , 0.3)
 
         # BAT tresholds
         self.emengercy_tresh = 0.3
@@ -284,7 +284,7 @@ class Algorithms:
             self.__controller.takeoff()
             self.__first_step = False
 
-        epsilon = 0.3
+        epsilon = 0.35
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
         if self.__data["battery"] > 50:
@@ -380,67 +380,41 @@ class Algorithms:
     def BAT(self, epsilon):
 
         self.__new_inter = True
+        self.cum_delta_t += self.__delta_t
 
         if is_intersection(self.__current[1], self.__current[3]):
-            self.cum_delta_t += self.__delta_t
-            threshold = 1
-            if self.cum_delta_t > threshold:
-                self.cum_delta_t = 0
-                # done_intersection
-                self.start_inter = False
-                closest = closest_intersection(self.__local_pos, self.intersections)
-                if closest != None:
-                    threshold = 120
-                    if closest[1] < threshold:
-                        print("im here")
-                        self.__new_inter = False
-                        if closest[0][1] > 0 and self.__current[1] > 2.3:
-                            self.RotateCW_90()
-                        elif closest[0][1] < 0 and self.__current[3] > 2.3:
-                            self.RotateCCW_90()
-                        else:
-                            self.Fly_Forward()
-                else:
-                    avg_pos = np.mean(np.array([pair[0] for pair in self.last_intersection]), axis=0)
-                    diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
-                    self.intersections.append((avg_pos,diff_rot))
-                    self.last_intersection = []
-            else:
-                # in intersection
-                self.last_intersection.append((self.__local_pos,self.__rotation))
-                self.start_inter = True
-        else :
+            self.last_intersection.append((self.__local_pos, self.__rotation))
+            self.start_inter = True
             self.cum_delta_t = 0
-        print("delta_c",self.cum_delta_t)        
-        # if start_intersection(self.__current,self.__prev):
-        #     self.last_intersection = (self.__local_pos, self.__rotation)
-        #     self.start_inter = True
-
-        # if done_intersection(self.__current, self.__prev) and self.start_inter:
-        #     self.start_inter = False
-
-        #     closest = closest_intersection(self.__local_pos, self.intersections)
-        #     if closest != None:
-        #         threshold = 120
-        #         if closest[1] < threshold:
-        #             print("im here")
-        #             self.__new_inter = False
-        #             if closest[0][1] > 0 and self.__current[1] > 2.3:
-        #                 self.RotateCW_90()
-        #             elif closest[0][1] < 0 and self.__current[3] > 2.3:
-        #                 self.RotateCCW_90()
-        #             else:
-        #                 self.Fly_Forward()
-        #     else:
-        #         cum_rotation = self.last_intersection[1] - self.__rotation
-        #         self.intersections.append(( (self.__local_pos + self.last_intersection[0])/2.0 ,cum_rotation))
         
+        elif self.start_inter and self.cum_delta_t > 1:
+            # done_intersection
+            self.start_inter = False
+            closest = closest_intersection(self.__local_pos, self.intersections)
+            if closest != None:
+                threshold = 120
+                if closest[1] < threshold:
+                    print("im here")
+                    self.__new_inter = False
+                    if closest[0][1] > 0 and self.__current[1] > 2.3:
+                        self.RotateCW_90()
+                    elif closest[0][1] < 0 and self.__current[3] > 2.3:
+                        self.RotateCCW_90()
+                    else:
+                        self.Fly_Forward()
+            else:
+                avg_pos = np.mean(np.array([pair[0] for pair in self.last_intersection]), axis=0)
+                diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
+                self.intersections.append((avg_pos,diff_rot))
+                self.last_intersection = []
+
         if self.__new_inter:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
             elif self.__current[0] < self.front_tresh:
                 self.RotateCCW()
             elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
+                print((self.__current[3] - self.__prev[3])/self.__delta_t)
                 self.RotateCW()
             elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
                 self.Tunnel(self.__current[1], self.__current[3])
@@ -457,18 +431,14 @@ class Algorithms:
         if getDistance([pos[0], pos[1]], self.goal) > L:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
-            elif self.__current[3] < epsilon:
-                u_t_r = self.PID_rh.compute(self.__data['d_right'])        
-                self.__controller.roll(u_t_r)
-            elif self.__current[1] < epsilon:
-                u_t_r = -1 * self.PID_rh.compute(self.__data['d_left'])        
-                self.__controller.roll(u_t_r)
-            
+
             self.target_point = self.traj.getTargetPoint([pos[0], pos[1]])
             yaw_err =  np.degrees(math.atan2(self.target_point[1] - pos[1], self.target_point[0] - pos[0])) - self.__rotation
             new_yaw = self.PID_y.compute(yaw_err)
             self.__controller.yaw(new_yaw)
-
+            
+            
+            
             if(abs(new_yaw) < 60):
                 if abs(new_yaw) < 10:
                     self.PID_ph.set_params(0.3,0.0008,0.08)
@@ -480,8 +450,15 @@ class Algorithms:
                 dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
                 new_pitch = self.PID_ph.compute(dis)
                 self.__controller.pitch(new_pitch)
+
+                if self.__current[3] < self.__current[1]:
+                    u_t_r = self.PID_rh.compute(self.__data['d_right'])        
+                else:
+                    u_t_r = -1 * self.PID_rh.compute(self.__data['d_left'])
+                self.__controller.roll(u_t_r)
             else:
                 self.__controller.pitch(0)
+                self.__controller.roll(0)
         else:
             self.__arrive_home = True
 

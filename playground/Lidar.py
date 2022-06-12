@@ -17,8 +17,7 @@ class Lidar:
         self.__sigma = sigma
         self.__obstacles = None
         # generate scan arc coordinates
-        num_scan_points = 20
-        self.__thetas = np.linspace(0, 2 * np.pi, num_scan_points)
+        self.__thetas = np.array([0, np.pi/2, np.pi, 1.5 * np.pi])
 
     def get_obstacles(self):
         return self.__obstacles
