@@ -70,7 +70,7 @@ class DroneController:
         self.__robot.move(x, y)
 
     def yaw(self, angle):
-        self.__yaw = angle
+        self.__yaw = clip(angle, -180, 180)
         if angle > 0:
             self.__counter = angle / (self.__angle_inc / 10)
         elif angle < 0:

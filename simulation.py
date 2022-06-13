@@ -1,7 +1,5 @@
-from sqlite3 import Timestamp
 import pygame
 import argparse
-from enum import Enum
 import threading
 
 import warnings
@@ -19,7 +17,6 @@ from playground.Algorithms import Algorithms
 
 from matplotlib import pyplot as plt 
 
-import time
 import numpy as np
 np.random.seed(42)
 
@@ -60,7 +57,7 @@ def main():
     algo = Algorithms(controller, odometry)
 
     clock = Clock(maximum_time_to_live = 8*60.0, current_time_to_live = 8*60.0)
-    #clock = Clock(maximum_time_to_live = 60.0, current_time_to_live = 60.0)
+    clock = Clock(maximum_time_to_live = 2*60.0, current_time_to_live = 2*60.0)
     
     # Initialize rendering
     screen = pygame.display.set_mode([world.width, world.height])
@@ -97,7 +94,7 @@ def main():
             algo.step(sensors_view.x,sensors_view.y)
             controller.move()
             
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
             if clock.current_time_to_live <= 0:
                 break

@@ -168,7 +168,7 @@ class Algorithms:
         self.PID_r = PID(6.0,6.0,1.0)
 
         # PIDs way back
-        self.PID_y = PID(0.5,0.0,0.05, max_measurements=180, disired_distance=0)
+        self.PID_y = PID(0.1,0.0,0.01, max_measurements=180, disired_distance=0)
         self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=10)
         self.PID_rh = PID(1.5 ,1.5 , 0.3)
 
@@ -192,8 +192,9 @@ class Algorithms:
         self.last_intersection = []
         self.start_inter = False
         self.cum_delta_t = 0
-        self.reconized_int = False
-        
+        self.__new_inter = True
+        self.add_inter = False
+        self.update_ones = True
 
     @property
     def state(self):
@@ -223,6 +224,8 @@ class Algorithms:
         self.__max_local_pos_y = max(self.__max_local_pos_y, self.__local_pos[0])
         y,x = make_direction(self.__odometry.rotation)
         self.__rotation = np.degrees(math.atan2(y,x))
+        if self.__rotation < 0:
+            self.__rotation = 360 + self.__rotation
         if self.__first_step:
             self.__prev = self.__current.copy()
 
@@ -241,13 +244,14 @@ class Algorithms:
         self.__state = 'Emengercy'
         self.__controller.roll(0)
         self.__controller.pitch(-1)
+        self.__controller.yaw(0)
         
-    def Tunnel(self, left, right, wall_align = 'd_right'):
+    def Tunnel(self, left, right):
         self.__state = 'Tunnel'
         u_t_p_t = self.PID_p.compute(self.__data['d_front'])
         self.__controller.pitch(u_t_p_t)        
 
-        u_t_r_t = self.PID_r.compute(self.__data[wall_align])
+        u_t_r_t = self.PID_r.compute((right + left)/2)
         self.__controller.roll(u_t_r_t)
 
     def Fly_Forward(self, wall_align = 'd_right'):
@@ -287,10 +291,10 @@ class Algorithms:
             self.intersections.append(([0,0], self.__rotation))
             self.__first_step = False
 
-        epsilon = 0.36
+        epsilon = 0.35
         self.__current = np.array([self.__data["d_front"], self.__data["d_left"], self.__data["d_back"], self.__data["d_right"]])
 
-        if self.__data["battery"] > 50:
+        if self.__data["battery"] > 60:
             self.BAT(epsilon)
 
         elif self.__first_go_home:
@@ -314,48 +318,7 @@ class Algorithms:
             if self.__data["yaw"] < 0.0 :
                 return
             
-            self.min_x = int(min(self.__local_pos[1], np.min(x), 0))
-            self.min_y = int(min(self.__local_pos[0], np.min(y), 0))
-            self.max_x = int(max(self.__local_pos[1], np.max(x), 0))
-            self.max_y = int(max(self.__local_pos[0], np.max(y), 0))
-
-            # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
-            self.home_coords = np.array([( (0 - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
-                            ( (0 - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-            
-            y = ( (y - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0
-            x = ( (x - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0
-            
-            y = y.astype(int)
-            x = x.astype(int)
-        
-            self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
-            self.local_map[y,x] = 1
-
-            pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
-                            ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
-                            
-            self.local_map = ndimage.maximum_filter(self.local_map, size=20)
-            path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
-            plt.imshow(self.local_map)
-            plt.show()                      
-            traj_x = []
-            traj_y = []
-            for pos in path:
-                traj_x.append(pos[0])
-                traj_y.append(pos[1])
-            
-            traj_x,traj_y = smooth(traj_x, traj_y)
-            traj_x = np.array(traj_x).astype(np.int)
-            traj_y = np.array(traj_y).astype(np.int)
-
-            self.traj = Trajectory(traj_x, traj_y)
-            self.goal = self.traj.getPoint(len(traj_x) - 1)
-
-            for x,y in zip(traj_x,traj_y):
-                self.path_draw.append((( (y - 0) / (abs(self.max_y) + abs(self.min_y) - 0) ) * (self.max_y - self.min_y) + self.min_y, 
-                                        ( (x - 0) / (abs(self.max_x) + abs(self.min_x) - 0) ) * (self.max_x - self.min_x) + self.min_x))
-
+            self.update_path(x, y)
             self.__third_go_home = False
             
         elif self.__data["battery"] <= 0:
@@ -367,7 +330,7 @@ class Algorithms:
 
          # elif self.__data["battery"] > 0 and not self.__arrive_home:
         elif not self.__arrive_home:
-            self.GoHome(epsilon)
+            self.GoHome(x, y, epsilon)
         else:
             print("Drone returned home")
             self.__controller.pitch(0)
@@ -380,92 +343,158 @@ class Algorithms:
         
         self.__prev = self.__current.copy()
 
+    def update_path(self, x, y):
+        self.min_x = int(min(self.__local_pos[1], np.min(x), 0))
+        self.min_y = int(min(self.__local_pos[0], np.min(y), 0))
+        self.max_x = int(max(self.__local_pos[1], np.max(x), 0))
+        self.max_y = int(max(self.__local_pos[0], np.max(y), 0))
+
+        # new_value = ( (old_value - old_min) / (old_max - old_min) ) * (new_max - new_min) + new_min
+        self.home_coords = np.array([( (0 - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                        ( (0 - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
+        
+        y = ( (y - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0
+        x = ( (x - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0
+        
+        y = y.astype(int)
+        x = x.astype(int)
+    
+        self.local_map = np.zeros(shape=(abs(self.max_y) + abs(self.min_y) + 1, abs(self.max_x) + abs(self.min_x) + 1))
+        self.local_map[y,x] = 1
+
+        pos = np.array([( (self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ,
+                        ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0])
+                        
+        self.local_map = ndimage.maximum_filter(self.local_map, size=20)
+        path = bfs(self.local_map, pos, self.home_coords, self.local_map.shape[1], self.local_map.shape[0])
+        # plt.imshow(self.local_map)
+        # plt.show()                      
+        traj_x = []
+        traj_y = []
+        for pos in path:
+            traj_x.append(pos[0])
+            traj_y.append(pos[1])
+        
+        traj_x,traj_y = smooth(traj_x, traj_y)
+        traj_x = np.array(traj_x).astype(np.int)
+        traj_y = np.array(traj_y).astype(np.int)
+
+        self.traj = Trajectory(traj_x, traj_y)
+        self.goal = self.traj.getPoint(len(traj_x) - 1)
+        self.path_draw = []
+        for x,y in zip(traj_x,traj_y):
+            self.path_draw.append((( (y - 0) / (abs(self.max_y) + abs(self.min_y) - 0) ) * (self.max_y - self.min_y) + self.min_y, 
+                                    ( (x - 0) / (abs(self.max_x) + abs(self.min_x) - 0) ) * (self.max_x - self.min_x) + self.min_x))
 
     def BAT(self, epsilon):
 
-        self.__new_inter = True
-        self.cum_delta_t += self.__delta_t
+        # self.cum_delta_t += self.__delta_t
 
-        if is_intersection(self.__current[1], self.__current[3]):
-            self.last_intersection.append((self.__local_pos, self.__rotation))
-            self.start_inter = True
-            self.cum_delta_t = 0
-            closest = closest_intersection(self.__local_pos, self.intersections)
-            threshold = 40
-            print("local",closest)     
-            if closest[1] < threshold:
-                print("im here")
-                self.__new_inter = False
-                print("current r",self.__current[1])
-                print("current l",self.__current[3])
-                if closest[0][1] > 0 and self.__current[1] > 1.5:
-                    self.RotateCW_90()
-                elif closest[0][1] < 0 and self.__current[3] > 1.5:
-                    self.RotateCCW_90()
-                else:
-                    self.Fly_Forward()
+        # if is_intersection(self.__current[1], self.__current[3]):
+            
+        #     if not self.start_inter:
+        #         closest = closest_intersection(self.__local_pos, self.intersections)
+        #         threshold = 30
+        #         print("local",closest)     
+        #         if closest[1] < threshold:
+        #             print("im here")
+                    
+        #             self.__new_inter = False
+        #             # self.__controller.pitch(0)
+        #             self.__controller.roll(0)
+        #             if self.__current[0] < self.emengercy_tresh :
+        #                 self.Emengercy()
+        #             elif closest[0][1] < 0:
+        #                 self.RotateCW_90()
+        #             elif closest[0][1] > 0:
+        #                 self.RotateCCW_90()
+        #             else:
+        #                 self.Fly_Forward()
+        #         else:
+        #             self.add_inter = True
+        #     else:
+        #         self.__new_inter = True
+                        
+        #     self.start_inter = True
+        #     self.last_intersection.append((self.__local_pos, self.__rotation))
+        #     self.cum_delta_t = 0
         
-        elif self.start_inter and self.cum_delta_t > 1:
-            # done_intersection
-            self.start_inter = False
-            if self.__new_inter:
-                avg_pos = np.median(np.array([pair[0] for pair in self.last_intersection]), axis=0)
-                diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
-                self.intersections.append((avg_pos,diff_rot))
-            self.last_intersection = []
+        # elif self.start_inter and self.cum_delta_t > 1:
+        #     # done_intersection
+        #     self.start_inter = False
+        #     if self.add_inter:
+        #         avg_pos = np.median(np.array([pair[0] for pair in self.last_intersection]), axis=0)
+        #         diff_rot = self.last_intersection[-1][1] - self.last_intersection[0][1]
+        #         self.intersections.append((avg_pos,diff_rot))
+        #         self.add_inter = False
+        #     self.last_intersection = []
 
-        if self.__new_inter:
-            if self.__current[0] < self.emengercy_tresh :
-                self.Emengercy()
-            elif self.__current[0] < self.front_tresh:
-                self.RotateCCW()
-            elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
-                #print((self.__current[3] - self.__prev[3])/self.__delta_t)
-                self.RotateCW()
-            elif self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh:
-                self.Tunnel(self.__current[1], self.__current[3])
-            elif self.__current[3] > self.right_far_tresh:
-                self.RotateCW_90()
-            else:
-                self.Fly_Forward()
+        # if self.__new_inter:
+        if self.__current[0] < self.emengercy_tresh :
+            self.Emengercy()
+        elif self.__current[0] < self.front_tresh:
+            self.RotateCCW()
+        elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
+            #print((self.__current[3] - self.__prev[3])/self.__delta_t)
+            self.RotateCW()
+        elif (self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh):
+            self.Tunnel(self.__current[1], self.__current[3])
+        elif self.__current[3] > self.right_far_tresh:
+            self.RotateCW_90()
+        else:
+            self.Fly_Forward()
         
             
-    def GoHome(self, epsilon):
+    def GoHome(self, x , y, epsilon):
 
         pos = np.array([ ( (self.__local_pos[1] - self.min_x) / (self.max_x - self.min_x) ) * (abs(self.max_x) + abs(self.min_x) - 0) + 0 ,
                             ((self.__local_pos[0] - self.min_y) / (self.max_y - self.min_y) ) * (abs(self.max_y) + abs(self.min_y) - 0) + 0 ])
-        
+
+        if self.__current[0] < 0.9 and self.update_ones and min([self.__data["v_x"], self.__data["v_y"]]) > 0:
+            
+            if self.__current[0] < 0.7:
+                self.__controller.pitch(-3)
+                return
+            self.update_path(x,y)
+            self.update_ones = False
+        if self.__current[0] > 0.5:
+            self.update_ones = True
+
         if getDistance([pos[0], pos[1]], self.goal) > L:
             if self.__current[0] < self.emengercy_tresh:
                 self.Emengercy()
 
             self.target_point = self.traj.getTargetPoint([pos[0], pos[1]])
-            yaw_err =  np.degrees(math.atan2(self.target_point[1] - pos[1], self.target_point[0] - pos[0])) - self.__rotation
+            angle = np.degrees(math.atan2(self.target_point[1] - pos[1], self.target_point[0] - pos[0]))
+            if angle < 0:
+                angle = 360 + angle
+            yaw_err =  angle - self.__rotation
             new_yaw = self.PID_y.compute(yaw_err)
             self.__controller.yaw(new_yaw)
             
-            
-            
             if(abs(new_yaw) < 60):
                 if abs(new_yaw) < 10:
-                    self.PID_ph.set_params(0.3,0.0008,0.08)
+                    self.PID_ph.set_params(0.06,0.0016,0.016)
                 elif abs(new_yaw) < 20:
-                    self.PID_ph.set_params(0.03,0.00008,0.008)
+                    self.PID_ph.set_params(0.006,0.00016,0.0016)
                 else:
-                    self.PID_ph.set_params(0.003,0.000008,0.0008)
+                    self.PID_ph.set_params(0.0006,0.000016,0.00016)
 
                 dis = math.hypot(self.target_point[1] - pos[1], self.target_point[0] - pos[0])
                 new_pitch = self.PID_ph.compute(dis)
                 self.__controller.pitch(new_pitch)
 
-                if self.__current[3] < self.__current[1]:
-                    u_t_r = self.PID_rh.compute(self.__data['d_right'])        
-                else:
+                if self.__current[3] < self.__current[1] and self.__current[3] < 0.75:
+                    u_t_r = self.PID_rh.compute(self.__data['d_right'])    
+                    self.__controller.roll(u_t_r)    
+                elif self.__current[3] > self.__current[1] and self.__current[1] < 0.75:
                     u_t_r = -1 * self.PID_rh.compute(self.__data['d_left'])
-                self.__controller.roll(u_t_r)
+                    self.__controller.roll(u_t_r)
             else:
                 self.__controller.pitch(0)
                 self.__controller.roll(0)
+            
+            
         else:
             self.__arrive_home = True
 
