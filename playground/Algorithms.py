@@ -168,9 +168,9 @@ class Algorithms:
         self.PID_r = PID(6.0,6.0,1.0)
 
         # PIDs way back
-        self.PID_y = PID(0.1,0.0,0.01, max_measurements=180, disired_distance=0)
-        self.PID_ph = PID(0.015,0.00004,0.004, disired_distance=10)
-        self.PID_rh = PID(1.5 ,1.5 , 0.3)
+        self.PID_y = PID(0.08/4,0.0,0.01/3, max_measurements=180, disired_distance=0)
+        self.PID_ph = PID(0.05,0.00004,0.004, disired_distance=3)
+        self.PID_rh = PID(1.5, 1.5, 0.3)
 
         # BAT tresholds
         self.emengercy_tresh = 0.3
@@ -429,13 +429,11 @@ class Algorithms:
         #         self.add_inter = False
         #     self.last_intersection = []
 
-        # if self.__new_inter:
         if self.__current[0] < self.emengercy_tresh :
             self.Emengercy()
         elif self.__current[0] < self.front_tresh:
             self.RotateCCW()
         elif (self.__current[3] - self.__prev[3])/self.__delta_t > epsilon:
-            #print((self.__current[3] - self.__prev[3])/self.__delta_t)
             self.RotateCW()
         elif (self.__current[1] < self.tunnel_tresh and self.__current[3] < self.tunnel_tresh):
             self.Tunnel(self.__current[1], self.__current[3])
@@ -453,7 +451,7 @@ class Algorithms:
         if self.__current[0] < 0.9 and self.update_ones and min([self.__data["v_x"], self.__data["v_y"]]) > 0:
             
             if self.__current[0] < 0.7:
-                self.__controller.pitch(-3)
+                self.__controller.pitch(-1)
                 return
             self.update_path(x,y)
             self.update_ones = False

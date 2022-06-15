@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-L = 25  # look ahead distance
+L = 23  # look ahead distance
 dt = 0.1  # discrete time
 
 # Vehicle parameters (m)
